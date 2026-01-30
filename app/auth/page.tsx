@@ -25,41 +25,44 @@ export default function AuthPage() {
     }
   }, [])
 
- const handleLogin = async (e: React.FormEvent) => {
-  e.preventDefault()
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password: 'guitarguitar'
-  })
-  if (error) {
-    setMessage(`Error: ${error.message}`)
-  } else {
-    setMessage(`✅ Logged in as ${data.user.email}`)
-    window.location.href = '/songs' // redirect to Songs page
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password: 'guitarguitar'
+    })
+    if (error) {
+      setMessage(`Error: ${error.message}`)
+    } else {
+      setMessage(`✅ Logged in as ${data.user.email}`)
+      window.location.href = '/songs'
+    }
   }
-}
   return (
-    <div style={{ padding: '2rem', maxWidth: '400px', margin: 'auto' }}>
-      <h1>Login / Signup</h1>
+    <div className="page">
+      <div className="card p-6 max-w-md mx-auto">
+        <p className="label mb-2">Access</p>
+        <h1 className="text-2xl font-semibold tracking-tight mb-4">Login / Signup</h1>
       {!session ? (
         <form onSubmit={handleLogin}>
           <input
             type="email"
             placeholder="Your email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={e => setEmail(e.target.value)}
             required
-            style={{ width: '100%', padding: '0.5rem', margin: '1rem 0' }}
+            className="input w-full mb-4"
           />
-          <button type="submit" style={{ padding: '0.5rem 1rem' }}>Send Magic Link</button>
+          <button type="submit" className="button-primary">Sign in</button>
         </form>
       ) : (
         <div>
           <p>✅ Logged in as {session.user.email}</p>
-          <p>You can now navigate to your dashboard or songs page.</p>
+          <p className="muted mt-2">You can now navigate to your songs page.</p>
         </div>
       )}
-      {message && <p>{message}</p>}
+      {message && <p className="mt-4">{message}</p>}
+      </div>
     </div>
   )
 }
