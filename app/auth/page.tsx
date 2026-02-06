@@ -1,12 +1,21 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabaseClient'
 
 export default function AuthPage() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
   const [session, setSession] = useState<any>(null)
+  const initialMode = useMemo(() => {
+    const modeParam = searchParams.get('mode')
+    return modeParam === 'signup' ? 'signup' : 'signin'
+  }, [searchParams])
+  const [mode, setMode] = useState<'signin' | 'signup'>(initialMode)
 
   useEffect(() => {
     const checkSession = async () => {
@@ -25,26 +34,46 @@ export default function AuthPage() {
     }
   }, [])
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setMessage('')
+    if (!email.trim() || !password.trim()) {
+      setMessage('Please enter an email and password.')
+      return
+    }
+    if (mode === 'signup') {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password
+      })
+      if (error) {
+        setMessage(`Error: ${error.message}`)
+      } else if (data.user) {
+        setMessage('✅ Account created. You can now sign in.')
+        setMode('signin')
+      }
+      return
+    }
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password: 'guitarguitar'
+      email: email.trim(),
+      password
     })
     if (error) {
       setMessage(`Error: ${error.message}`)
     } else {
-      setMessage(`✅ Logged in as ${data.user.email}`)
-      window.location.href = '/songs'
+      setMessage(`✅ Logged in as ${data.user?.email ?? email}`)
+      router.push('/songs')
     }
   }
   return (
     <div className="page">
       <div className="card p-6 max-w-md mx-auto">
         <p className="label mb-2">Access</p>
-        <h1 className="text-2xl font-semibold tracking-tight mb-4">Login / Signup</h1>
+        <h1 className="text-2xl font-semibold tracking-tight mb-4">
+          {mode === 'signup' ? 'Create account' : 'Sign in'}
+        </h1>
       {!session ? (
-        <form onSubmit={handleLogin}>
+        <form onSubmit={handleSubmit}>
           <input
             type="email"
             placeholder="Your email"
@@ -53,7 +82,27 @@ export default function AuthPage() {
             required
             className="input w-full mb-4"
           />
-          <button type="submit" className="button-primary">Sign in</button>
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            required
+            className="input w-full mb-4"
+          />
+          <button type="submit" className="button-primary">
+            {mode === 'signup' ? 'Create account' : 'Sign in'}
+          </button>
+          <button
+            type="button"
+            className="button-ghost mt-3 w-full"
+            onClick={() => {
+              setMode(prev => (prev === 'signup' ? 'signin' : 'signup'))
+              setMessage('')
+            }}
+          >
+            {mode === 'signup' ? 'Already have an account? Sign in' : 'New here? Create account'}
+          </button>
         </form>
       ) : (
         <div>

@@ -56,6 +56,7 @@ export default function SongsPage() {
     index: number
     timeoutId: ReturnType<typeof setTimeout>
   } | null>(null)
+  const [showOnboarding, setShowOnboarding] = useState(false)
 
   // Fetch session
   useEffect(() => {
@@ -121,6 +122,17 @@ export default function SongsPage() {
     }
   }, [undoDelete])
 
+  useEffect(() => {
+    if (!session) return
+    const hasSeen = window.localStorage.getItem('gt_onboarded') === '1'
+    if (!hasSeen) setShowOnboarding(true)
+  }, [session])
+
+  const dismissOnboarding = () => {
+    window.localStorage.setItem('gt_onboarded', '1')
+    setShowOnboarding(false)
+  }
+
   const handleAddSetlist = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!session || !newSetlistName.trim()) return
@@ -157,6 +169,9 @@ export default function SongsPage() {
     }
     if (data) {
       setGenres(prev => [...prev, data as Genre].sort((a, b) => a.name.localeCompare(b.name)))
+      setSelectedGenreIds(prev =>
+        prev.includes((data as Genre).id) ? prev : [...prev, (data as Genre).id]
+      )
       setNewGenreName('')
     }
   }
@@ -298,6 +313,24 @@ export default function SongsPage() {
       }
     }
 
+    const { data: audioFiles, error: audioFilesError } = await supabase
+      .from('song_recordings')
+      .select('storage_path, file_url')
+      .eq('song_id', id)
+      .eq('user_id', session.user.id)
+
+    if (audioFilesError) console.log('Error fetching recordings for deletion:', audioFilesError)
+
+    if (audioFiles && audioFiles.length > 0) {
+      const paths = audioFiles
+        .map(file => file.storage_path ?? (file.file_url?.match(/\/song-audio\/(.+)$/)?.[1] ?? null))
+        .filter((path): path is string => Boolean(path))
+      if (paths.length > 0) {
+        const { error: storageError } = await supabase.storage.from('song-audio').remove(paths)
+        if (storageError) console.log('Error deleting recording files:', storageError)
+      }
+    }
+
     const { error } = await supabase.from('songs').delete().eq('id', id)
     if (error) console.log(error)
   }
@@ -376,6 +409,43 @@ export default function SongsPage() {
 
   return (
     <div className="page">
+      {showOnboarding && (
+        <div className="modal-backdrop">
+          <div className="modal-card">
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <p className="label mb-2">Welcome</p>
+                <h2 className="text-2xl font-semibold mb-2">Your library starts here</h2>
+                <p className="muted">
+                  Add a few songs, tag them with genres, and build your first setlist.
+                </p>
+              </div>
+              <button type="button" className="button-ghost modal-close" onClick={dismissOnboarding}>
+                Close
+              </button>
+            </div>
+            <div className="grid gap-3">
+              <div className="card-strong p-4">
+                <p className="label mb-1">1. Add a song</p>
+                <p className="text-sm muted">Use the form on this page to add your first song.</p>
+              </div>
+              <div className="card-strong p-4">
+                <p className="label mb-1">2. Tag it</p>
+                <p className="text-sm muted">Create a genre and assign it for quick filtering.</p>
+              </div>
+              <div className="card-strong p-4">
+                <p className="label mb-1">3. Build a setlist</p>
+                <p className="text-sm muted">Create a setlist and drag songs onto it.</p>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button type="button" className="button-primary" onClick={dismissOnboarding}>
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="page-header">
         <h1 className="text-3xl font-semibold tracking-tight">Your Songs</h1>
         <button

@@ -16,6 +16,12 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+If you get a permissions error binding to `0.0.0.0:3000`, run:
+
+```bash
+npm run dev -- -H 127.0.0.1 -p 3001
+```
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
@@ -34,3 +40,35 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Production Checklist
+
+### Environment variables
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+### Supabase
+- RLS policies verified for: `songs`, `song_notes`, `song_links`, `song_files`, `genres`, `setlists`, `setlist_songs`
+- Storage bucket exists (name matches code): `song-pdfs`
+- Storage policies set on `storage.objects` for `song-pdfs`
+- Auth settings: Site URL and Redirect URLs updated for production domain
+
+### App QA
+- Create/edit/delete song
+- Create/edit/delete notes and links
+- Upload/preview/delete PDFs
+- Add/remove song from setlists
+
+## Vercel + Supabase Deployment (step-by-step)
+
+1) Create a Vercel project and connect this repo.
+2) In Vercel Project Settings → Environment Variables:
+   - Add `NEXT_PUBLIC_SUPABASE_URL`
+   - Add `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - (Set values for Production + Preview as needed)
+3) Deploy.
+4) In Supabase Dashboard → Authentication → URL Configuration:
+   - Set **Site URL** to your Vercel production domain.
+   - Add Redirect URLs for auth flows (e.g. `/auth/confirm`, `/auth/reset`).
+5) Validate RLS + Storage policies.
+6) Smoke test the flows above on your production domain.
