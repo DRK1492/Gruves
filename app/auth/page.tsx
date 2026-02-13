@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabaseClient'
 
 export default function AuthPage() {
@@ -10,7 +11,7 @@ export default function AuthPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
-  const [session, setSession] = useState<any>(null)
+  const [session, setSession] = useState<Session | null>(null)
   const initialMode = useMemo(() => {
     const modeParam = searchParams.get('mode')
     return modeParam === 'signup' ? 'signup' : 'signin'

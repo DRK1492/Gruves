@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../../../lib/supabaseClient'
 import NoteContent from '../../components/NoteContent'
 import NoteEditor from '../../components/NoteEditor'
@@ -40,7 +41,7 @@ export default function SetlistDetailPage() {
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
   const [editingNoteContent, setEditingNoteContent] = useState('')
   const [loading, setLoading] = useState(true)
-  const [session, setSession] = useState<any>(null)
+  const [session, setSession] = useState<Session | null>(null)
   const [error, setError] = useState('')
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
@@ -88,7 +89,7 @@ export default function SetlistDetailPage() {
         console.error('Error loading setlist songs:', setlistSongsError)
       }
 
-      const rawItems = ((setlistSongsData as SetlistSongRow[]) || []).filter(row => row.songs)
+      const rawItems = ((setlistSongsData as unknown as SetlistSongRow[]) || []).filter(row => row.songs)
       const normalizedItems = rawItems
         .map((row, index) => ({ ...row, position: row.position ?? index }))
         .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))

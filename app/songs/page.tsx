@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabaseClient'
 
 interface Song {
@@ -50,13 +51,16 @@ export default function SongsPage() {
   const [setlistError, setSetlistError] = useState('')
   const [draggingSongId, setDraggingSongId] = useState<string | null>(null)
   const [dragOverSetlistId, setDragOverSetlistId] = useState<string | null>(null)
-  const [session, setSession] = useState<any>(null)
+  const [session, setSession] = useState<Session | null>(null)
   const [undoDelete, setUndoDelete] = useState<{
     song: Song
     index: number
     timeoutId: ReturnType<typeof setTimeout>
   } | null>(null)
-  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.localStorage.getItem('gt_onboarded') !== '1'
+  })
 
   // Fetch session
   useEffect(() => {
@@ -121,12 +125,6 @@ export default function SongsPage() {
       if (undoDelete?.timeoutId) clearTimeout(undoDelete.timeoutId)
     }
   }, [undoDelete])
-
-  useEffect(() => {
-    if (!session) return
-    const hasSeen = window.localStorage.getItem('gt_onboarded') === '1'
-    if (!hasSeen) setShowOnboarding(true)
-  }, [session])
 
   const dismissOnboarding = () => {
     window.localStorage.setItem('gt_onboarded', '1')
@@ -374,7 +372,7 @@ export default function SongsPage() {
 
   // Navigate to song detail page
   const goToSong = (id: string) => {
-    window.location.href = `/songs/${id}`
+    router.push(`/songs/${id}`)
   }
 
   const artistOptions = Array.from(
@@ -409,7 +407,7 @@ export default function SongsPage() {
 
   return (
     <div className="page">
-      {showOnboarding && (
+      {session && showOnboarding && (
         <div className="modal-backdrop">
           <div className="modal-card">
             <div className="flex items-start justify-between gap-3 mb-4">
@@ -559,6 +557,16 @@ export default function SongsPage() {
                   </div>
                 )}
               </div>
+              <button
+                type="button"
+                className="button-ghost"
+                onClick={event => {
+                  event.stopPropagation()
+                  void handleDelete(song.id)
+                }}
+              >
+                Delete
+              </button>
             </li>
           ))}
         </ul>

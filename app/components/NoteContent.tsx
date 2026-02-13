@@ -50,7 +50,7 @@ const parseList = (lines: string[], startIndex: number) => {
   const stack: Array<{ indent: number; items: NoteListItem[] }> = [root]
   let index = startIndex
 
-  const ensureChildList = (parent: NoteListItem, indent: number) => {
+  const ensureChildList = (parent: NoteListItem) => {
     const existing = parent.children && parent.children.type === 'list' ? parent.children : null
     if (existing) return existing.items
     const newList: NoteBlock = { type: 'list', items: [] }
@@ -79,7 +79,7 @@ const parseList = (lines: string[], startIndex: number) => {
       const parentList = stack[stack.length - 1]
       const parentItem = parentList.items[parentList.items.length - 1]
       if (parentItem) {
-        const childItems = ensureChildList(parentItem, indent)
+        const childItems = ensureChildList(parentItem)
         stack.push({ indent, items: childItems })
       }
     }
@@ -159,11 +159,11 @@ const renderBlocks = (blocks: NoteBlock[]) =>
 export default function NoteContent({ text }: { text: string }) {
   const isHtml = htmlRegex.test(text)
   const sanitizedHtml = useMemo(() => (isHtml ? sanitizeHtml(text) : ''), [isHtml, text])
+  const blocks = useMemo(() => parseNoteContent(text), [text])
 
   if (isHtml) {
     return <div dangerouslySetInnerHTML={{ __html: sanitizedHtml }} />
   }
 
-  const blocks = useMemo(() => parseNoteContent(text), [text])
   return <>{renderBlocks(blocks)}</>
 }

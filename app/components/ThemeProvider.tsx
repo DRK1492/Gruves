@@ -24,25 +24,21 @@ const applyTheme = (mode: ThemeMode, theme: ThemeName) => {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setMode] = useState<ThemeMode>('dark')
-  const [theme, setTheme] = useState<ThemeName>('ember')
-  const [hydrated, setHydrated] = useState(false)
+  const [mode, setMode] = useState<ThemeMode>(() => {
+    if (typeof window === 'undefined') return 'dark'
+    return (localStorage.getItem(MODE_STORAGE_KEY) as ThemeMode | null) ?? 'dark'
+  })
+  const [theme, setTheme] = useState<ThemeName>(() => {
+    if (typeof window === 'undefined') return 'ember'
+    return (localStorage.getItem(THEME_STORAGE_KEY) as ThemeName | null) ?? 'ember'
+  })
 
   useEffect(() => {
-    const storedMode = (localStorage.getItem(MODE_STORAGE_KEY) as ThemeMode | null) ?? 'dark'
-    const storedTheme = (localStorage.getItem(THEME_STORAGE_KEY) as ThemeName | null) ?? 'ember'
-    setMode(storedMode)
-    setTheme(storedTheme)
-    setHydrated(true)
-  }, [])
-
-  useEffect(() => {
-    if (!hydrated) return
     applyTheme(mode, theme)
     localStorage.setItem(MODE_STORAGE_KEY, mode)
     localStorage.setItem(THEME_STORAGE_KEY, theme)
     window.dispatchEvent(new Event('gt-theme-change'))
-  }, [mode, theme, hydrated])
+  }, [mode, theme])
 
   const value = useMemo(
     () => ({

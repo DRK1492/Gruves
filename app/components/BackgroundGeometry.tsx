@@ -39,7 +39,7 @@ export default function BackgroundGeometry({
   const prefersReducedMotion = useRef(false)
   const pointerRef = useRef({ x: 0.5, y: 0.5, vx: 0, vy: 0 })
   const lastPointerRef = useRef({ x: 0.5, y: 0.5 })
-  const lastMoveRef = useRef<number>(performance.now())
+  const lastMoveRef = useRef<number>(0)
   const rippleRef = useRef<Array<{ x: number; y: number; t: number; v: number }>>([])
   const lastRipplePushRef = useRef(0)
   const colorsRef = useRef({ accent: '245, 185, 66', text: '230, 234, 240' })
@@ -82,6 +82,7 @@ export default function BackgroundGeometry({
       start: performance.now(),
       grid: [] as Array<{ x: number; y: number; ix: number; iy: number }>
     }
+    lastMoveRef.current = performance.now()
 
     const resize = () => {
       state.dpr = window.devicePixelRatio || 1

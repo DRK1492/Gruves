@@ -36,9 +36,6 @@ export default function RootLayout({
         <BackgroundGeometry
           intensity={3.2}
           density={1.8}
-          speed={1.2}
-          accentBias={0.7}
-          sideFocusWidth={0.3}
         />
         <div className="app-shell">
           <header className="app-header">

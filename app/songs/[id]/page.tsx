@@ -1,7 +1,8 @@
 'use client'
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../../../lib/supabaseClient'
 import NoteContent from '../../components/NoteContent'
 import NoteEditor from '../../components/NoteEditor'
@@ -161,7 +162,7 @@ export default function SongDetailPage() {
   const [activeNoteTabId, setActiveNoteTabId] = useState<string | null>(null)
   const [activeSetlistTabId, setActiveSetlistTabId] = useState<string | null>(null)
 
-  const [session, setSession] = useState<any>(null)
+  const [session, setSession] = useState<Session | null>(null)
   const linkClickTimeouts = useRef<Record<string, number>>({})
   const pdfClickTimeouts = useRef<Record<string, number>>({})
   const skipLinkRowClickRef = useRef(false)
@@ -169,6 +170,32 @@ export default function SongDetailPage() {
   const pdfPreviewRef = useRef<HTMLDivElement | null>(null)
   const youtubePreviewRef = useRef<HTMLDivElement | null>(null)
   const [selectedSetlistId, setSelectedSetlistId] = useState<string>('')
+
+  const effectiveActiveLinkTabId = useMemo(() => {
+    if (globalViewMode !== 'tabs') return null
+    if (activeLinkTabId && links.some(link => link.id === activeLinkTabId)) return activeLinkTabId
+    return links[0]?.id ?? null
+  }, [globalViewMode, activeLinkTabId, links])
+
+  const effectiveActivePdfTabId = useMemo(() => {
+    if (globalViewMode !== 'tabs') return null
+    if (activePdfTabId && pdfFiles.some(file => file.id === activePdfTabId)) return activePdfTabId
+    return pdfFiles[0]?.id ?? null
+  }, [globalViewMode, activePdfTabId, pdfFiles])
+
+  const effectiveActiveNoteTabId = useMemo(() => {
+    if (globalViewMode !== 'tabs') return null
+    if (activeNoteTabId && notes.some(note => note.id === activeNoteTabId)) return activeNoteTabId
+    return notes[0]?.id ?? null
+  }, [globalViewMode, activeNoteTabId, notes])
+
+  const effectiveActiveSetlistTabId = useMemo(() => {
+    if (globalViewMode !== 'tabs') return null
+    if (activeSetlistTabId && setlists.some(setlist => setlist.id === activeSetlistTabId)) {
+      return activeSetlistTabId
+    }
+    return setlists[0]?.id ?? null
+  }, [globalViewMode, activeSetlistTabId, setlists])
 
   // Load session
   useEffect(() => {
@@ -261,14 +288,14 @@ export default function SongDetailPage() {
       setLinks(linksData || [])
       setPdfFiles(pdfData || [])
       setRecordings(recordingsData || [])
-      setSongGenres((genreData as SongGenre[]) || [])
+      setSongGenres((genreData as unknown as SongGenre[]) || [])
       setAllGenres((allGenresData as Genre[]) || [])
       setSetlists((setlistsData as Setlist[]) || [])
       setSongSetlistIds(((songSetlistsData as { setlist_id: string }[]) || []).map(s => s.setlist_id))
       setEditTitle(songData.title || '')
       setEditArtist(songData.artist || '')
       setEditStatus(songData.status || 'learning')
-      setSelectedGenreIds(((genreData as SongGenre[]) || []).map(g => g.genre_id))
+      setSelectedGenreIds(((genreData as unknown as SongGenre[]) || []).map(g => g.genre_id))
     }
 
     fetchData()
@@ -302,44 +329,6 @@ export default function SongDetailPage() {
     }, 50)
     return () => window.clearTimeout(timeout)
   }, [previewYoutubeUrl])
-
-  useEffect(() => {
-    if (globalViewMode !== 'tabs') return
-    if (links.length === 0) {
-      setActiveLinkTabId(null)
-      return
-    }
-    setActiveLinkTabId(prev => (prev && links.some(link => link.id === prev) ? prev : links[0].id))
-  }, [globalViewMode, links])
-
-  useEffect(() => {
-    if (globalViewMode !== 'tabs') return
-    if (pdfFiles.length === 0) {
-      setActivePdfTabId(null)
-      return
-    }
-    setActivePdfTabId(prev => (prev && pdfFiles.some(file => file.id === prev) ? prev : pdfFiles[0].id))
-  }, [globalViewMode, pdfFiles])
-
-  useEffect(() => {
-    if (globalViewMode !== 'tabs') return
-    if (notes.length === 0) {
-      setActiveNoteTabId(null)
-      return
-    }
-    setActiveNoteTabId(prev => (prev && notes.some(note => note.id === prev) ? prev : notes[0].id))
-  }, [globalViewMode, notes])
-
-  useEffect(() => {
-    if (globalViewMode !== 'tabs') return
-    if (setlists.length === 0) {
-      setActiveSetlistTabId(null)
-      return
-    }
-    setActiveSetlistTabId(prev =>
-      prev && setlists.some(setlist => setlist.id === prev) ? prev : setlists[0].id
-    )
-  }, [globalViewMode, setlists])
 
   const getNoteLabel = (note: Note, index: number) => {
     const text = note.content.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
@@ -1715,7 +1704,7 @@ export default function SongDetailPage() {
                     <button
                       key={link.id}
                       type="button"
-                      className={`tab-trigger ${activeLinkTabId === link.id ? 'tab-active' : ''}`}
+                      className={`tab-trigger ${effectiveActiveLinkTabId === link.id ? 'tab-active' : ''}`}
                       onClick={() => setActiveLinkTabId(link.id)}
                     >
                       {link.title || link.url}
@@ -1724,7 +1713,7 @@ export default function SongDetailPage() {
                 </div>
                 <div className="tabs-panel">
                   {(() => {
-                    const activeLink = links.find(link => link.id === activeLinkTabId) ?? null
+                    const activeLink = links.find(link => link.id === effectiveActiveLinkTabId) ?? null
                     if (!activeLink) {
                       return <p className="muted">Choose a link to see details.</p>
                     }
@@ -2133,7 +2122,7 @@ export default function SongDetailPage() {
                     <button
                       key={file.id}
                       type="button"
-                      className={`tab-trigger ${activePdfTabId === file.id ? 'tab-active' : ''}`}
+                      className={`tab-trigger ${effectiveActivePdfTabId === file.id ? 'tab-active' : ''}`}
                       onClick={() => setActivePdfTabId(file.id)}
                     >
                       {file.file_name}
@@ -2142,7 +2131,7 @@ export default function SongDetailPage() {
                 </div>
                 <div className="tabs-panel">
                   {(() => {
-                    const activeFile = pdfFiles.find(file => file.id === activePdfTabId) ?? null
+                    const activeFile = pdfFiles.find(file => file.id === effectiveActivePdfTabId) ?? null
                     if (!activeFile) {
                       return <p className="muted">Choose a file to see details.</p>
                     }
@@ -2590,7 +2579,7 @@ export default function SongDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {notes.map((note, index) => (
+                  {notes.map(note => (
                     editingNoteId === note.id ? (
                       <tr key={note.id}>
                         <td colSpan={2}>
@@ -2883,7 +2872,7 @@ export default function SongDetailPage() {
                     <button
                       key={note.id}
                       type="button"
-                      className={`tab-trigger ${activeNoteTabId === note.id ? 'tab-active' : ''}`}
+                      className={`tab-trigger ${effectiveActiveNoteTabId === note.id ? 'tab-active' : ''}`}
                       onClick={() => setActiveNoteTabId(note.id)}
                     >
                       {getNoteLabel(note, index)}
@@ -2892,7 +2881,7 @@ export default function SongDetailPage() {
                 </div>
                 <div className="tabs-panel">
                   {(() => {
-                    const activeNote = notes.find(note => note.id === activeNoteTabId) ?? null
+                    const activeNote = notes.find(note => note.id === effectiveActiveNoteTabId) ?? null
                     if (!activeNote) {
                       return <p className="muted">Choose a note to see details.</p>
                     }
@@ -3151,7 +3140,7 @@ export default function SongDetailPage() {
                       <button
                         key={setlist.id}
                         type="button"
-                        className={`tab-trigger ${activeSetlistTabId === setlist.id ? 'tab-active' : ''}`}
+                        className={`tab-trigger ${effectiveActiveSetlistTabId === setlist.id ? 'tab-active' : ''}`}
                         onClick={() => setActiveSetlistTabId(setlist.id)}
                       >
                         {setlist.name}
@@ -3160,7 +3149,8 @@ export default function SongDetailPage() {
                   </div>
                   <div className="tabs-panel">
                     {(() => {
-                      const activeSetlist = setlists.find(setlist => setlist.id === activeSetlistTabId) ?? null
+                      const activeSetlist =
+                        setlists.find(setlist => setlist.id === effectiveActiveSetlistTabId) ?? null
                       if (!activeSetlist) {
                         return <p className="muted">Choose a setlist to see details.</p>
                       }
