@@ -44,8 +44,11 @@ export default function AuthPage() {
     }
     if (mode === 'signup') {
       const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+        }
       })
       if (error) {
         setMessage(`Error: ${error.message}`)
