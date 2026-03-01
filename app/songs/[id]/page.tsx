@@ -62,6 +62,8 @@ interface Setlist {
 }
 
 type ViewMode = 'table' | 'grid' | 'tabs'
+type SectionNavId = 'listen' | 'read' | 'record' | 'think' | 'setlists'
+const SECTION_SCROLL_PADDING = 16
 
 const getYouTubeEmbedUrl = (url: string) => {
   try {
@@ -156,11 +158,15 @@ export default function SongDetailPage() {
   const [openLinkMenuId, setOpenLinkMenuId] = useState<string | null>(null)
   const [openPdfMenuId, setOpenPdfMenuId] = useState<string | null>(null)
   const [openNoteMenuId, setOpenNoteMenuId] = useState<string | null>(null)
+  const [isSongHeaderMenuOpen, setIsSongHeaderMenuOpen] = useState(false)
 
   const [activeLinkTabId, setActiveLinkTabId] = useState<string | null>(null)
   const [activePdfTabId, setActivePdfTabId] = useState<string | null>(null)
   const [activeNoteTabId, setActiveNoteTabId] = useState<string | null>(null)
   const [activeSetlistTabId, setActiveSetlistTabId] = useState<string | null>(null)
+  const [activeSection, setActiveSection] = useState<SectionNavId>('listen')
+  const [headerHeight, setHeaderHeight] = useState(68)
+  const [sectionScrollOffset, setSectionScrollOffset] = useState(132)
 
   const [session, setSession] = useState<Session | null>(null)
   const linkClickTimeouts = useRef<Record<string, number>>({})
@@ -170,6 +176,14 @@ export default function SongDetailPage() {
   const pdfPreviewRef = useRef<HTMLDivElement | null>(null)
   const youtubePreviewRef = useRef<HTMLDivElement | null>(null)
   const songHeaderCardRef = useRef<HTMLDivElement | null>(null)
+  const songHeaderMenuRef = useRef<HTMLDivElement | null>(null)
+  const sectionNavRef = useRef<HTMLDivElement | null>(null)
+  const listenSectionRef = useRef<HTMLDivElement | null>(null)
+  const readSectionRef = useRef<HTMLDivElement | null>(null)
+  const recordSectionRef = useRef<HTMLDivElement | null>(null)
+  const thinkSectionRef = useRef<HTMLDivElement | null>(null)
+  const setlistsSectionRef = useRef<HTMLDivElement | null>(null)
+  const visibleSectionRatiosRef = useRef<Partial<Record<SectionNavId, number>>>({})
   const [selectedSetlistId, setSelectedSetlistId] = useState<string>('')
 
   const effectiveActiveLinkTabId = useMemo(() => {
@@ -206,6 +220,93 @@ export default function SongDetailPage() {
     }
     loadSession()
   }, [])
+
+  useEffect(() => {
+    const updateStickyOffsets = () => {
+      const appHeader = document.querySelector('.app-header')
+      const nextHeaderHeight = appHeader instanceof HTMLElement
+        ? Math.round(appHeader.getBoundingClientRect().height)
+        : 68
+      const nextNavHeight = sectionNavRef.current
+        ? Math.round(sectionNavRef.current.getBoundingClientRect().height)
+        : 48
+
+      setHeaderHeight(nextHeaderHeight)
+      setSectionScrollOffset(nextHeaderHeight + nextNavHeight + SECTION_SCROLL_PADDING)
+    }
+
+    updateStickyOffsets()
+    window.addEventListener('resize', updateStickyOffsets)
+
+    return () => window.removeEventListener('resize', updateStickyOffsets)
+  }, [song?.id, links.length, pdfFiles.length, recordings.length, notes.length, setlists.length])
+
+  useEffect(() => {
+    if (!isSongHeaderMenuOpen) return
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!songHeaderMenuRef.current?.contains(event.target as Node)) {
+        setIsSongHeaderMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    return () => document.removeEventListener('mousedown', handlePointerDown)
+  }, [isSongHeaderMenuOpen])
+
+  useEffect(() => {
+    const sections = [
+      { id: 'listen' as const, ref: listenSectionRef },
+      { id: 'read' as const, ref: readSectionRef },
+      { id: 'record' as const, ref: recordSectionRef },
+      { id: 'think' as const, ref: thinkSectionRef },
+      { id: 'setlists' as const, ref: setlistsSectionRef }
+    ].filter(section => section.ref.current)
+
+    if (sections.length === 0) return
+
+    const observer = new IntersectionObserver(
+      entries => {
+        entries.forEach(entry => {
+          const sectionId = entry.target.getAttribute('data-section-nav-id') as SectionNavId | null
+          if (!sectionId) return
+
+          if (entry.isIntersecting) {
+            visibleSectionRatiosRef.current[sectionId] = entry.intersectionRatio
+            return
+          }
+
+          delete visibleSectionRatiosRef.current[sectionId]
+        })
+
+        const nextActiveSection = sections
+          .map(section => ({
+            id: section.id,
+            ratio: visibleSectionRatiosRef.current[section.id] ?? 0,
+            top: section.ref.current?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY
+          }))
+          .filter(section => section.ratio > 0)
+          .sort((a, b) => {
+            if (b.ratio !== a.ratio) return b.ratio - a.ratio
+            return Math.abs(a.top - sectionScrollOffset) - Math.abs(b.top - sectionScrollOffset)
+          })[0]?.id
+
+        if (nextActiveSection) {
+          setActiveSection(current => (current === nextActiveSection ? current : nextActiveSection))
+        }
+      },
+      {
+        rootMargin: `-${sectionScrollOffset}px 0px -55% 0px`,
+        threshold: [0.1, 0.2, 0.35, 0.5, 0.7]
+      }
+    )
+
+    sections.forEach(section => {
+      if (section.ref.current) observer.observe(section.ref.current)
+    })
+
+    return () => observer.disconnect()
+  }, [sectionScrollOffset, song?.id])
 
   // Fetch all data
   useEffect(() => {
@@ -1256,9 +1357,25 @@ export default function SongDetailPage() {
   const linkedNotesForAudio = previewAudioId
     ? notes.filter(note => note.recording_id === previewAudioId)
     : []
+  const sectionNavItems = [
+    { id: 'listen' as const, label: 'Listen', count: links.length, ref: listenSectionRef },
+    { id: 'read' as const, label: 'Read', count: pdfFiles.length, ref: readSectionRef },
+    { id: 'record' as const, label: 'Record', count: recordings.length, ref: recordSectionRef },
+    { id: 'think' as const, label: 'Think', count: notes.length, ref: thinkSectionRef },
+    { id: 'setlists' as const, label: 'Setlists', count: setlists.length, ref: setlistsSectionRef }
+  ]
 
+  const scrollToSection = (ref: { current: HTMLDivElement | null }, sectionId: SectionNavId) => {
+    const section = ref.current
+    if (!section) return
+
+    setActiveSection(sectionId)
+    const top = window.scrollY + section.getBoundingClientRect().top - sectionScrollOffset
+    window.scrollTo({ top, behavior: 'smooth' })
+  }
   if (loadError) return <p className="p-6 text-red-600">{loadError}</p>
   if (!song) return <p className="p-6">Loading...</p>
+  const songStatusLabel = song.status.charAt(0).toUpperCase() + song.status.slice(1)
 
   return (
     <div className="page">
@@ -1280,61 +1397,72 @@ export default function SongDetailPage() {
 
       <div>
         {/* Song Header */}
-        <div className="card p-6 mb-6" ref={songHeaderCardRef}>
+        <div className={`card p-4 mb-6 song-header-card song-header-status-${song.status}`} ref={songHeaderCardRef}>
         {!isEditing ? (
           <>
-            <p className="label mb-2">Song</p>
-            <h1 className="text-3xl font-semibold tracking-tight heading-display">{song.title}</h1>
-            <p className="muted song-data">{song.artist || 'Unknown Artist'}</p>
-            <span className={`badge badge-status status-${song.status} mt-2`}>{song.status}</span>
-            {songGenres.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {songGenres.map(g => (
-                  <span
-                    key={g.genre_id}
-                    className="genre-pill"
-                  >
-                    {g.genres?.name ?? 'Unknown'}
-                  </span>
-                ))}
-              </div>
-            )}
-            <div className="mt-4 action-group">
-              <button
-                onClick={() => setIsEditing(true)}
-                className="button-ghost action-button action-button-compact"
-              >
-                <span className="inline-flex items-center gap-2">
-                  <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-                    <path
-                      d="M4 20h4l10-10-4-4L4 16v4z"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  Edit
-                </span>
-              </button>
-              <button
-                onClick={handleDeleteSong}
-                className="button-ghost button-danger action-button action-button-compact"
-              >
-                <span className="inline-flex items-center gap-2">
-                  <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-                    <path
-                      d="M5 7h14M9 7V5h6v2M8 7l1 12h6l1-12"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  Delete
-                </span>
-              </button>
+            <div className="song-header-status-wrap">
+              <span className={`song-header-status status-${song.status}`}>{songStatusLabel}</span>
             </div>
+            <div className="song-header-main">
+              <h1 className="text-4xl font-semibold tracking-tight heading-display song-header-title">{song.title}</h1>
+              <p className="muted song-data">{song.artist || 'Unknown Artist'}</p>
+              {songGenres.length > 0 && (
+                <div className="song-header-genres">
+                  {songGenres.map(g => (
+                    <span
+                      key={g.genre_id}
+                      className="genre-pill"
+                    >
+                      {g.genres?.name ?? 'Unknown'}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="song-header-menu-row">
+              <div
+                ref={songHeaderMenuRef}
+                className="menu-container"
+                onClick={event => event.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  className="button-ghost menu-trigger song-header-menu-trigger"
+                  onClick={event => {
+                    event.stopPropagation()
+                    setIsSongHeaderMenuOpen(prev => !prev)
+                  }}
+                >
+                  <span className="menu-dots" aria-hidden="true">⋯</span>
+                  <span className="sr-only">Song actions</span>
+                </button>
+                {isSongHeaderMenuOpen && (
+                  <div className="song-header-menu-panel" onClick={event => event.stopPropagation()}>
+                    <button
+                      type="button"
+                      className="menu-item"
+                      onClick={() => {
+                        setIsEditing(true)
+                        setIsSongHeaderMenuOpen(false)
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="menu-item menu-danger"
+                      onClick={() => {
+                        handleDeleteSong()
+                        setIsSongHeaderMenuOpen(false)
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="song-header-glow" aria-hidden="true" />
           </>
         ) : (
           <div className="space-y-3">
@@ -1420,8 +1548,35 @@ export default function SongDetailPage() {
         )}
         </div>
 
+        <div
+          ref={sectionNavRef}
+          className="card song-section-nav mb-6"
+          style={{ top: `${headerHeight}px` }}
+        >
+          <div className="song-section-nav-inner">
+            {sectionNavItems.map(item => (
+              <button
+                key={item.id}
+                type="button"
+                className={`tab-trigger song-section-nav-pill ${activeSection === item.id ? 'tab-active' : ''}`}
+                aria-current={activeSection === item.id ? 'true' : undefined}
+                onClick={() => scrollToSection(item.ref, item.id)}
+              >
+                <span>{item.label}</span>
+                <span className="section-nav-count">{item.count}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Links */}
-        <div className="card p-6 mb-6">
+        <div
+          id="section-listen"
+          ref={listenSectionRef}
+          data-section-nav-id="listen"
+          className="card p-6 mb-6"
+          style={{ scrollMarginTop: `${sectionScrollOffset}px` }}
+        >
         <div className="section-header">
           <div className="section-title">
             <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
@@ -1855,7 +2010,13 @@ export default function SongDetailPage() {
         </div>
 
         {/* PDFs */}
-        <div className="card p-6 mb-6">
+        <div
+          id="section-read"
+          ref={readSectionRef}
+          data-section-nav-id="read"
+          className="card p-6 mb-6"
+          style={{ scrollMarginTop: `${sectionScrollOffset}px` }}
+        >
         <div className="section-header">
           <div className="section-title">
             <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
@@ -2252,7 +2413,13 @@ export default function SongDetailPage() {
         </div>
 
         {/* Recordings */}
-        <div className="card p-6 mb-6">
+        <div
+          id="section-record"
+          ref={recordSectionRef}
+          data-section-nav-id="record"
+          className="card p-6 mb-6"
+          style={{ scrollMarginTop: `${sectionScrollOffset}px` }}
+        >
           <div className="section-header">
             <div className="section-title">
               <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
@@ -2494,7 +2661,13 @@ export default function SongDetailPage() {
         </div>
 
         {/* Notes */}
-        <div className="card p-6">
+        <div
+          id="section-think"
+          ref={thinkSectionRef}
+          data-section-nav-id="think"
+          className="card p-6"
+          style={{ scrollMarginTop: `${sectionScrollOffset}px` }}
+        >
         <div className="section-header">
           <div className="section-title">
             <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
@@ -3028,7 +3201,13 @@ export default function SongDetailPage() {
         </div>
 
         {/* Setlists */}
-        <div className="card p-6 mt-6">
+        <div
+          id="section-setlists"
+          ref={setlistsSectionRef}
+          data-section-nav-id="setlists"
+          className="card p-6 mt-6"
+          style={{ scrollMarginTop: `${sectionScrollOffset}px` }}
+        >
         <div className="section-header">
           <div className="section-title">
             <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
