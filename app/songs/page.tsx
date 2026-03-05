@@ -31,6 +31,8 @@ interface SongGenre {
   } | null
 }
 
+type SongsViewMode = 'board' | 'list'
+
 export default function SongsPage() {
   const router = useRouter()
   const pathname = usePathname()
@@ -66,6 +68,10 @@ export default function SongsPage() {
     return window.localStorage.getItem('gt_onboarded') !== '1'
   })
   const [showAddSongModal, setShowAddSongModal] = useState(false)
+  const [songsViewMode, setSongsViewMode] = useState<SongsViewMode>(() => {
+    if (typeof window === 'undefined') return 'board'
+    return window.localStorage.getItem('songs-view-mode') === 'list' ? 'list' : 'board'
+  })
 
   // Fetch session
   useEffect(() => {
@@ -151,6 +157,11 @@ export default function SongsPage() {
     const nextQuery = nextParams.toString()
     router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname)
   }, [searchParams, pathname, router])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem('songs-view-mode', songsViewMode)
+  }, [songsViewMode])
 
   const dismissOnboarding = () => {
     window.localStorage.setItem('gt_onboarded', '1')
@@ -487,6 +498,131 @@ export default function SongsPage() {
     wishlist: filteredSongs.filter(song => song.status === 'wishlist')
   }
 
+  const statusGroups = [
+    {
+      key: 'confident' as const,
+      title: 'Confident',
+      songs: songsByStatus.confident,
+      emptyCopy: 'Nothing here yet.',
+      statusClass: 'status-confident'
+    },
+    {
+      key: 'learning' as const,
+      title: 'Learning',
+      songs: songsByStatus.learning,
+      emptyCopy: 'Add something you’re working on.',
+      statusClass: 'status-learning'
+    },
+    {
+      key: 'wishlist' as const,
+      title: 'Wishlist',
+      songs: songsByStatus.wishlist,
+      emptyCopy: 'Capture songs you want to learn.',
+      statusClass: 'status-wishlist'
+    }
+  ]
+
+  const renderSongCard = (song: Song) => (
+    <article
+      key={song.id}
+      draggable
+      onDragStart={() => handleDragStart(song.id)}
+      onDragEnd={handleDragEnd}
+      onClick={() => goToSong(song.id)}
+      className="row row-clickable p-2 song-tile overflow-visible"
+    >
+      <div className="flex items-start justify-between gap-3 song-tile-top">
+        <div className="min-w-0">
+          <h3 className="font-semibold text-base truncate">{song.title}</h3>
+          <p className="text-sm muted">{song.artist || 'Unknown Artist'}</p>
+        </div>
+        <div className="menu-container">
+          <button
+            type="button"
+            className="button-ghost menu-trigger"
+            draggable={false}
+            onMouseDown={event => event.stopPropagation()}
+            onClick={event => {
+              event.stopPropagation()
+              setOpenMenuSongId(prev => (prev === song.id ? null : song.id))
+            }}
+            aria-label="Song menu"
+          >
+            •••
+          </button>
+          {openMenuSongId === song.id && (
+            <div
+              className="menu songs-tile-menu"
+              onClick={event => event.stopPropagation()}
+            >
+              {song.status !== 'confident' && (
+                <button
+                  type="button"
+                  className="menu-item"
+                  onClick={async event => {
+                    event.stopPropagation()
+                    await updateSongStatus(song.id, 'confident')
+                    setOpenMenuSongId(null)
+                  }}
+                >
+                  Move to Confident
+                </button>
+              )}
+              {song.status !== 'learning' && (
+                <button
+                  type="button"
+                  className="menu-item"
+                  onClick={async event => {
+                    event.stopPropagation()
+                    await updateSongStatus(song.id, 'learning')
+                    setOpenMenuSongId(null)
+                  }}
+                >
+                  Move to Learning
+                </button>
+              )}
+              {song.status !== 'wishlist' && (
+                <button
+                  type="button"
+                  className="menu-item"
+                  onClick={async event => {
+                    event.stopPropagation()
+                    await updateSongStatus(song.id, 'wishlist')
+                    setOpenMenuSongId(null)
+                  }}
+                >
+                  Move to Wishlist
+                </button>
+              )}
+              <button
+                type="button"
+                className="menu-item menu-danger"
+                onClick={event => {
+                  event.stopPropagation()
+                  void handleDelete(song.id)
+                  setOpenMenuSongId(null)
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+      {(song.song_genres || []).length > 0 ? (
+        <div className="song-genres-slot">
+          {(song.song_genres || []).slice(0, 3).map(g => (
+            <span key={g.genre_id} className="genre-pill">
+              {g.genres?.name ?? 'Unknown'}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <div className="song-genres-slot invisible" aria-hidden="true" />
+      )}
+    </article>
+  )
+
   return (
     <div className="page">
       {session && showOnboarding && (
@@ -528,16 +664,34 @@ export default function SongsPage() {
       )}
       <div className="page-header">
         <h1 className="text-3xl font-semibold tracking-tight">Your Song Board</h1>
-        <button
-          type="button"
-          className="button-primary button-cta"
-          onClick={() => {
-            setFormError('')
-            setShowAddSongModal(true)
-          }}
-        >
-          Add Song
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="view-toggle">
+            <button
+              type="button"
+              className={songsViewMode === 'board' ? 'view-toggle-active' : ''}
+              onClick={() => setSongsViewMode('board')}
+            >
+              Board
+            </button>
+            <button
+              type="button"
+              className={songsViewMode === 'list' ? 'view-toggle-active' : ''}
+              onClick={() => setSongsViewMode('list')}
+            >
+              List
+            </button>
+          </div>
+          <button
+            type="button"
+            className="button-primary button-cta"
+            onClick={() => {
+              setFormError('')
+              setShowAddSongModal(true)
+            }}
+          >
+            Add Song
+          </button>
+        </div>
       </div>
 
       <div className="card p-4 mb-6">
@@ -616,142 +770,41 @@ export default function SongsPage() {
           </div>
         </div>
       ) : filteredSongs.length > 0 ? (
-        <div className="songs-board">
-          {[
-            {
-              key: 'confident',
-              title: 'Confident',
-              songs: songsByStatus.confident,
-              emptyCopy: 'Nothing here yet.'
-            },
-            {
-              key: 'learning',
-              title: 'Learning',
-              songs: songsByStatus.learning,
-              emptyCopy: 'Add something you’re working on.'
-            },
-            {
-              key: 'wishlist',
-              title: 'Wishlist',
-              songs: songsByStatus.wishlist,
-              emptyCopy: 'Capture songs you want to learn.'
-            }
-          ].map(column => (
-            <section key={column.key} className="songs-col">
-              <h2 className="songs-col-header">
-                {column.title} ({column.songs.length})
-              </h2>
-              <div className="songs-col-body">
-                {column.songs.length === 0 ? (
-                  <div className="border border-dashed border-[var(--border)] rounded px-3 py-4 text-sm muted">
-                    {column.emptyCopy}
+        songsViewMode === 'board' ? (
+          <div className="songs-board">
+            {statusGroups.map(column => (
+              <section key={column.key} className="songs-col">
+                <h2 className="songs-col-header">
+                  {column.title} ({column.songs.length})
+                </h2>
+                <div className="songs-col-body">
+                  {column.songs.length === 0 ? (
+                    <div className="border border-dashed border-[var(--border)] rounded px-3 py-4 text-sm muted">
+                      {column.emptyCopy}
+                    </div>
+                  ) : (
+                    column.songs.map(renderSongCard)
+                  )}
+                </div>
+              </section>
+            ))}
+          </div>
+        ) : (
+          <div className="songs-list">
+            {statusGroups
+              .filter(group => group.songs.length > 0)
+              .map(group => (
+                <section key={group.key} className="songs-list-section">
+                  <h2 className={`label songs-list-label ${group.statusClass}`}>
+                    {group.title} ({group.songs.length})
+                  </h2>
+                  <div className="songs-list-grid">
+                    {group.songs.map(renderSongCard)}
                   </div>
-                ) : (
-                  column.songs.map(song => (
-                    <article
-                      key={song.id}
-                      draggable
-                      onDragStart={() => handleDragStart(song.id)}
-                      onDragEnd={handleDragEnd}
-                      onClick={() => goToSong(song.id)}
-                      className="row row-clickable p-2 song-tile overflow-visible"
-                    >
-                      <div className="flex items-start justify-between gap-3 song-tile-top">
-                        <div className="min-w-0">
-                          <h3 className="font-semibold text-base truncate">{song.title}</h3>
-                          <p className="text-sm muted">{song.artist || 'Unknown Artist'}</p>
-                        </div>
-                        <div className="menu-container">
-                          <button
-                            type="button"
-                            className="button-ghost menu-trigger"
-                            draggable={false}
-                            onMouseDown={event => event.stopPropagation()}
-                            onClick={event => {
-                              event.stopPropagation()
-                              setOpenMenuSongId(prev => (prev === song.id ? null : song.id))
-                            }}
-                            aria-label="Song menu"
-                          >
-                            •••
-                          </button>
-                          {openMenuSongId === song.id && (
-                            <div
-                              className="menu songs-tile-menu"
-                              onClick={event => event.stopPropagation()}
-                            >
-                              {song.status !== 'confident' && (
-                                <button
-                                  type="button"
-                                  className="menu-item"
-                                  onClick={async event => {
-                                    event.stopPropagation()
-                                    await updateSongStatus(song.id, 'confident')
-                                    setOpenMenuSongId(null)
-                                  }}
-                                >
-                                  Move to Confident
-                                </button>
-                              )}
-                              {song.status !== 'learning' && (
-                                <button
-                                  type="button"
-                                  className="menu-item"
-                                  onClick={async event => {
-                                    event.stopPropagation()
-                                    await updateSongStatus(song.id, 'learning')
-                                    setOpenMenuSongId(null)
-                                  }}
-                                >
-                                  Move to Learning
-                                </button>
-                              )}
-                              {song.status !== 'wishlist' && (
-                                <button
-                                  type="button"
-                                  className="menu-item"
-                                  onClick={async event => {
-                                    event.stopPropagation()
-                                    await updateSongStatus(song.id, 'wishlist')
-                                    setOpenMenuSongId(null)
-                                  }}
-                                >
-                                  Move to Wishlist
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                className="menu-item menu-danger"
-                                onClick={event => {
-                                  event.stopPropagation()
-                                  void handleDelete(song.id)
-                                  setOpenMenuSongId(null)
-                                }}
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      {(song.song_genres || []).length > 0 ? (
-                        <div className="song-genres-slot">
-                          {(song.song_genres || []).slice(0, 3).map(g => (
-                            <span key={g.genre_id} className="genre-pill">
-                              {g.genres?.name ?? 'Unknown'}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="song-genres-slot invisible" aria-hidden="true" />
-                      )}
-                    </article>
-                  ))
-                )}
-              </div>
-            </section>
-          ))}
-        </div>
+                </section>
+              ))}
+          </div>
+        )
       ) : (
         <p className="text-center muted mt-4">No songs match your filters.</p>
       )}

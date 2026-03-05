@@ -82,6 +82,21 @@ const getYouTubeEmbedUrl = (url: string) => {
   return null
 }
 
+const getLinkSource = (url: string) => {
+  try {
+    const parsed = new URL(url)
+    return parsed.hostname.replace(/^www\./, '')
+  } catch {
+    return 'Unknown source'
+  }
+}
+
+const getLinkDisplayTitle = (link: SongLink) => {
+  const title = link.title?.trim()
+  if (title) return title
+  return getLinkSource(link.url)
+}
+
 const MAX_PDF_SIZE_BYTES = 12 * 1024 * 1024
 const MAX_AUDIO_SIZE_BYTES = 20 * 1024 * 1024
 
@@ -642,7 +657,7 @@ export default function SongDetailPage() {
     if (embedUrl) {
       setPreviewYoutubeUrl(prev => {
         const next = prev === embedUrl ? null : embedUrl
-        setPreviewYoutubeTitle(next ? link.title || link.url : '')
+        setPreviewYoutubeTitle(next ? getLinkDisplayTitle(link) : '')
         setPreviewLinkId(next ? link.id : null)
         return next
       })
@@ -1638,7 +1653,7 @@ export default function SongDetailPage() {
                 <thead>
                   <tr>
                     <th>Title</th>
-                    <th>URL</th>
+                    <th>Source</th>
                     <th className="table-actions">Actions</th>
                   </tr>
                 </thead>
@@ -1707,8 +1722,8 @@ export default function SongDetailPage() {
                           if (!editingLinkId) handleLinkRowDoubleClick(link)
                         }}
                       >
-                        <td className="table-cell">{link.title || link.url}</td>
-                        <td className="table-cell muted">{link.url}</td>
+                        <td className="table-cell">{getLinkDisplayTitle(link)}</td>
+                        <td className="table-cell muted">{getLinkSource(link.url)}</td>
                         <td className="table-cell table-actions">
                           <div className="menu-container" onClick={event => event.stopPropagation()}>
                             <button
@@ -1816,8 +1831,8 @@ export default function SongDetailPage() {
                     ) : (
                       <>
                         <div>
-                          <p className="text-sm font-medium">{link.title || link.url}</p>
-                          <p className="text-xs muted break-all">{link.url}</p>
+                          <p className="text-sm font-medium">{getLinkDisplayTitle(link)}</p>
+                          <p className="text-xs muted">{getLinkSource(link.url)}</p>
                         </div>
                         <div className="menu-container" onClick={event => event.stopPropagation()}>
                           <button
@@ -1882,7 +1897,7 @@ export default function SongDetailPage() {
                       className={`tab-trigger ${effectiveActiveLinkTabId === link.id ? 'tab-active' : ''}`}
                       onClick={() => setActiveLinkTabId(link.id)}
                     >
-                      {link.title || link.url}
+                      {getLinkDisplayTitle(link)}
                     </button>
                   ))}
                 </div>
@@ -1933,8 +1948,8 @@ export default function SongDetailPage() {
                     return (
                       <div className="tabs-content">
                         <div>
-                          <p className="text-sm font-medium">{activeLink.title || 'Untitled link'}</p>
-                          <p className="text-xs muted break-all">{activeLink.url}</p>
+                          <p className="text-sm font-medium">{getLinkDisplayTitle(activeLink)}</p>
+                          <p className="text-xs muted">{getLinkSource(activeLink.url)}</p>
                         </div>
                         <div className="flex gap-2 flex-wrap">
                           <button

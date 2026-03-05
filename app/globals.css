@@ -1150,15 +1150,12 @@ a {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.72rem;
-  height: 70vh;
-  min-height: 0;
 }
 
 .songs-col {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  min-height: 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 0.55rem;
@@ -1181,13 +1178,33 @@ a {
 }
 
 .songs-col-body {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: visible;
   padding: 0.6rem;
   display: grid;
   gap: 0.5rem;
   align-content: start;
+}
+
+.songs-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.songs-list-section {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.songs-list-label {
+  display: inline-flex;
+  width: fit-content;
+}
+
+.songs-list-grid {
+  display: grid;
+  gap: 0.72rem;
+  grid-template-columns: repeat(3, minmax(280px, 1fr));
 }
 
 .song-tile {
@@ -1237,6 +1254,16 @@ a {
 @media (max-width: 720px) {
   .song-header-title {
     font-size: 2.25rem;
+  }
+
+  .songs-list-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1060px) and (min-width: 721px) {
+  .songs-list-grid {
+    grid-template-columns: repeat(2, minmax(280px, 1fr));
   }
 }
 
