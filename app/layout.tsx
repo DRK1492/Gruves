@@ -3,11 +3,7 @@ import { IBM_Plex_Mono, Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
-import BackgroundGeometry from "./components/BackgroundGeometry";
-import AppHeader from "./components/AppHeader";
-import AuthGate from "./components/AuthGate";
-import { ToastProvider } from "./components/ToastProvider";
-import { ThemeProvider } from "./components/ThemeProvider";
+import AppProviders from "./components/AppProviders";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -34,20 +30,11 @@ export default function RootLayout({
   return (
     <html lang="en" data-mode="dark" data-theme="ember">
       <body className={`app-root ${inter.variable} ${ibmPlexMono.variable}`}>
-        <BackgroundGeometry
-          intensity={3.2}
-          density={1.8}
-        />
-        <div className="app-shell">
-          <AppHeader />
-          <ThemeProvider>
-            <ToastProvider>
-              <AuthGate>
-                <main>{children}</main>
-              </AuthGate>
-            </ToastProvider>
-          </ThemeProvider>
-        </div>
+        <AppProviders>
+          <div className="app-shell">
+            <main>{children}</main>
+          </div>
+        </AppProviders>
         <Analytics />
         <SpeedInsights />
       </body>

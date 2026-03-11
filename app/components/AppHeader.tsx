@@ -2,32 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import type { Session } from '@supabase/supabase-js'
-import { supabase } from '../../lib/supabaseClient'
 import UserMenu from './UserMenu'
+import { useSupabaseSession } from './SessionProvider'
 
 export default function AppHeader() {
   const pathname = usePathname()
-  const [session, setSession] = useState<Session | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const fetchSession = async () => {
-      const { data } = await supabase.auth.getSession()
-      setSession(data.session)
-      setLoading(false)
-    }
-
-    fetchSession()
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession)
-      setLoading(false)
-    })
-
-    return () => listener.subscription.unsubscribe()
-  }, [])
+  const { loading, session } = useSupabaseSession()
 
   if (!loading && pathname === '/' && !session) {
     return null

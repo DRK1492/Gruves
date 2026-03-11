@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabaseClient'
+import { useSupabaseSession } from '../components/SessionProvider'
 
 interface Setlist {
   id: string
@@ -15,15 +15,7 @@ export default function SetlistsPage() {
   const [setlists, setSetlists] = useState<Setlist[]>([])
   const [newSetlistName, setNewSetlistName] = useState('')
   const [error, setError] = useState('')
-  const [session, setSession] = useState<Session | null>(null)
-
-  useEffect(() => {
-    const fetchSession = async () => {
-      const { data } = await supabase.auth.getSession()
-      setSession(data.session)
-    }
-    fetchSession()
-  }, [])
+  const { session } = useSupabaseSession()
 
   useEffect(() => {
     const fetchSetlists = async () => {

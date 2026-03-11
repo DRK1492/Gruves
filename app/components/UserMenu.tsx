@@ -2,29 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabaseClient'
+import { useSupabaseSession } from './SessionProvider'
 
 export default function UserMenu() {
   const router = useRouter()
-  const [session, setSession] = useState<Session | null>(null)
   const [open, setOpen] = useState(false)
-
-  useEffect(() => {
-    const loadSession = async () => {
-      const { data } = await supabase.auth.getSession()
-      setSession(data.session)
-    }
-    loadSession()
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession)
-    })
-
-    return () => {
-      listener.subscription.unsubscribe()
-    }
-  }, [])
+  const { session } = useSupabaseSession()
 
   useEffect(() => {
     if (!open) return

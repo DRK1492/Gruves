@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabaseClient'
+import { useSupabaseSession } from '../components/SessionProvider'
 
 export default function AuthPage() {
   const searchParams = useSearchParams()
@@ -11,29 +11,12 @@ export default function AuthPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
-  const [session, setSession] = useState<Session | null>(null)
+  const { session } = useSupabaseSession()
   const initialMode = useMemo(() => {
     const modeParam = searchParams.get('mode')
     return modeParam === 'signup' ? 'signup' : 'signin'
   }, [searchParams])
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode)
-
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data } = await supabase.auth.getSession()
-      setSession(data.session)
-    }
-    checkSession()
-
-    // Listen for auth changes
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-    })
-
-    return () => {
-      listener.subscription.unsubscribe()
-    }
-  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -2,29 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../../../lib/supabaseClient'
-import NoteContent from '../../components/NoteContent'
-import NoteEditor from '../../components/NoteEditor'
-
-interface Song {
-  id: string
-  title: string
-  artist: string
-  status: string
-}
-
-interface SetlistSongRow {
-  song_id: string
-  position: number | null
-  songs: Song | null
-}
-
-interface SetlistNote {
-  id: string
-  content: string
-  created_at: string
-}
+import { useSupabaseSession } from '../../components/SessionProvider'
+import SetlistHeader from '../../components/setlist-detail/SetlistHeader'
+import SetlistNotesSection from '../../components/setlist-detail/SetlistNotesSection'
+import SetlistSongsSection from '../../components/setlist-detail/SetlistSongsSection'
+import type { SetlistNote, SetlistSongRow, Song } from '../../components/setlist-detail/types'
 
 export default function SetlistDetailPage() {
   const { id } = useParams()
@@ -41,7 +24,6 @@ export default function SetlistDetailPage() {
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
   const [editingNoteContent, setEditingNoteContent] = useState('')
   const [loading, setLoading] = useState(true)
-  const [session, setSession] = useState<Session | null>(null)
   const [error, setError] = useState('')
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
@@ -49,14 +31,7 @@ export default function SetlistDetailPage() {
   const [openSetlistMenu, setOpenSetlistMenu] = useState(false)
   const [openSongMenuId, setOpenSongMenuId] = useState<string | null>(null)
   const [openNoteMenuId, setOpenNoteMenuId] = useState<string | null>(null)
-
-  useEffect(() => {
-    const fetchSession = async () => {
-      const { data } = await supabase.auth.getSession()
-      setSession(data.session)
-    }
-    fetchSession()
-  }, [])
+  const { session } = useSupabaseSession()
 
   useEffect(() => {
     if (!id || !session?.user?.id) return
@@ -372,308 +347,53 @@ export default function SetlistDetailPage() {
 
   return (
     <div className="page">
-      <div className="mb-4">
-        <button onClick={() => router.push('/songs')} className="button-link button-link-large">
-          ← Back to Songs
-        </button>
-      </div>
+      <SetlistHeader
+        openSetlistMenu={openSetlistMenu}
+        onBack={() => router.push('/songs')}
+        onDelete={handleDeleteSetlist}
+        onRename={handleRenameSetlist}
+        setOpenSetlistMenu={updater => setOpenSetlistMenu(prev => updater(prev))}
+        setlistName={setlistName}
+      />
 
-      <div className="card p-6 mb-6 flex justify-between items-center">
-        <div>
-          <p className="label mb-2">Setlist</p>
-          <h1 className="text-3xl font-semibold tracking-tight">{setlistName}</h1>
-        </div>
-        <div className="menu-container" onClick={event => event.stopPropagation()}>
-          <button
-            type="button"
-            className="button-ghost menu-trigger"
-            onClick={event => {
-              event.stopPropagation()
-              setOpenSetlistMenu(prev => !prev)
-            }}
-          >
-            <span className="menu-dots" aria-hidden="true">⋯</span>
-            <span className="sr-only">Setlist actions</span>
-          </button>
-          {openSetlistMenu && (
-            <div className="menu" onClick={event => event.stopPropagation()}>
-              <button
-                type="button"
-                className="menu-item"
-                onClick={() => {
-                  handleRenameSetlist()
-                  setOpenSetlistMenu(false)
-                }}
-              >
-                Rename
-              </button>
-              <button
-                type="button"
-                className="menu-item menu-danger"
-                onClick={() => {
-                  handleDeleteSetlist()
-                  setOpenSetlistMenu(false)
-                }}
-              >
-                Delete
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+      <SetlistSongsSection
+        allSongs={allSongs}
+        dragOverIndex={dragOverIndex}
+        newSongArtist={newSongArtist}
+        newSongTitle={newSongTitle}
+        onAddExistingSong={handleAddExistingSong}
+        onCreateSongAndAdd={handleCreateSongAndAdd}
+        onDrop={handleDrop}
+        onRemoveSong={handleRemoveSong}
+        onSongClick={songId => router.push(`/songs/${songId}?fromSetlist=${id}`)}
+        openSongMenuId={openSongMenuId}
+        savingOrder={savingOrder}
+        selectedSongId={selectedSongId}
+        setDragIndex={setDragIndex}
+        setDragOverIndex={setDragOverIndex}
+        setNewSongArtist={setNewSongArtist}
+        setNewSongTitle={setNewSongTitle}
+        setOpenSongMenuId={updater => setOpenSongMenuId(prev => updater(prev))}
+        setSelectedSongId={setSelectedSongId}
+        setlistItems={setlistItems}
+        songAddError={songAddError}
+      />
 
-      <div className="card p-6 mb-6">
-        <div className="section-title">
-          <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-            <path
-              d="M7 6h10M7 12h10M7 18h6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-            />
-          </svg>
-          <h2 className="text-xl font-semibold">Add Songs</h2>
-        </div>
-        <div className="section-divider" />
-        <div className="grid gap-3">
-          <div className="flex items-center gap-3">
-            <span className="label w-32 text-base">From library:</span>
-            <select
-              value={selectedSongId}
-              onChange={event => setSelectedSongId(event.target.value)}
-              className="input flex-1"
-            >
-              <option value="">Choose song…</option>
-              {allSongs
-                .filter(song => !setlistItems.some(item => item.song_id === song.id))
-                .map(song => (
-                  <option key={song.id} value={song.id}>
-                    {song.title}
-                  </option>
-                ))}
-            </select>
-            <button onClick={handleAddExistingSong} className="button-primary">
-              Add
-            </button>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span className="label w-32 text-base">New song:</span>
-            <input
-              type="text"
-              placeholder="Song title"
-              value={newSongTitle}
-              onChange={event => setNewSongTitle(event.target.value)}
-              className="input flex-1"
-            />
-            <input
-              type="text"
-              placeholder="Artist (optional)"
-              value={newSongArtist}
-              onChange={event => setNewSongArtist(event.target.value)}
-              className="input flex-1"
-            />
-            <button onClick={handleCreateSongAndAdd} className="button-ghost">
-              Create
-            </button>
-          </div>
-        </div>
-        {songAddError && <p className="text-sm text-red-600 mt-2">{songAddError}</p>}
-      </div>
-
-      {setlistItems.length === 0 ? (
-        <p className="muted">No songs in this setlist yet.</p>
-      ) : (
-        <>
-          {savingOrder && <p className="text-sm muted mb-2">Saving order...</p>}
-          <div className="section-title">
-            <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-              <path
-                d="M7 6h10M7 12h10M7 18h6"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-              />
-            </svg>
-            <h2 className="text-xl font-semibold">Songs</h2>
-          </div>
-          <div className="section-divider" />
-          <ul className="space-y-2">
-            {setlistItems.map((item, index) => (
-              <li
-                key={item.song_id}
-                draggable
-                onDragStart={() => setDragIndex(index)}
-                onDragOver={e => e.preventDefault()}
-                onDragEnter={() => setDragOverIndex(index)}
-                onDragLeave={() => setDragOverIndex(null)}
-                onDragEnd={() => {
-                  setDragIndex(null)
-                  setDragOverIndex(null)
-                }}
-                onDrop={() => handleDrop(index)}
-                onClick={() => router.push(`/songs/${item.song_id}?fromSetlist=${id}`)}
-                className={`row flex justify-between items-center ${dragOverIndex === index ? 'row-selected' : ''} ${openSongMenuId === item.song_id ? 'row-menu-open' : ''}`}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="mono text-sm muted w-6 text-right">{index + 1}.</span>
-                  <div>
-                    <p className="font-medium">{item.songs?.title}</p>
-                    <p className="text-sm muted">{item.songs?.artist || 'Unknown Artist'}</p>
-                  </div>
-                </div>
-                <div className="menu-container" onClick={event => event.stopPropagation()}>
-                  <button
-                    type="button"
-                    className="button-ghost menu-trigger"
-                    onClick={event => {
-                      event.stopPropagation()
-                      setOpenSongMenuId(prev => (prev === item.song_id ? null : item.song_id))
-                    }}
-                  >
-                    <span className="menu-dots" aria-hidden="true">⋯</span>
-                    <span className="sr-only">Song actions</span>
-                  </button>
-                  {openSongMenuId === item.song_id && (
-                    <div className="menu" onClick={event => event.stopPropagation()}>
-                      <button
-                        type="button"
-                        className="menu-item menu-danger"
-                        onClick={() => {
-                          handleRemoveSong(item.song_id)
-                          setOpenSongMenuId(null)
-                        }}
-                      >
-                        Remove from setlist
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-
-      <div className="card p-6 mt-6">
-        <div className="section-title">
-          <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-            <path
-              d="M6 5h12v14H6z"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M9 9h6M9 13h6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-            />
-          </svg>
-          <h2 className="text-xl font-semibold">Setlist Notes</h2>
-        </div>
-        <div className="section-divider" />
-        <NoteEditor
-          value={newNote}
-          onChange={setNewNote}
-          placeholder="Add a note about this setlist..."
-          className="input note-editor w-full mb-2 min-h-[100px]"
-        />
-        <button
-          onClick={handleAddNote}
-          className="button-primary mb-6"
-        >
-          Save Note
-        </button>
-        {notes.length === 0 ? (
-          <p className="muted">No notes yet.</p>
-        ) : (
-          <ul className="space-y-3">
-            {notes.map(note => (
-              <li
-                key={note.id}
-                className={`row flex justify-between items-start ${openNoteMenuId === note.id ? 'row-menu-open' : ''}`}
-              >
-                {editingNoteId === note.id ? (
-                  <div className="w-full">
-                    <NoteEditor
-                      value={editingNoteContent}
-                      onChange={setEditingNoteContent}
-                      placeholder="Edit note..."
-                      className="input note-editor w-full mb-2 min-h-[100px]"
-                    />
-                    <div className="flex gap-3">
-                      <button
-                        onClick={handleUpdateNote}
-                        className="button-primary"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={() => {
-                          setEditingNoteId(null)
-                          setEditingNoteContent('')
-                        }}
-                        className="button-ghost"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="note-content flex-1">
-                      <NoteContent text={note.content} />
-                    </div>
-                    <div className="menu-container" onClick={event => event.stopPropagation()}>
-                      <button
-                        type="button"
-                        className="button-ghost menu-trigger"
-                        onClick={event => {
-                          event.stopPropagation()
-                          setOpenNoteMenuId(prev => (prev === note.id ? null : note.id))
-                        }}
-                      >
-                        <span className="menu-dots" aria-hidden="true">⋯</span>
-                        <span className="sr-only">Note actions</span>
-                      </button>
-                      {openNoteMenuId === note.id && (
-                        <div className="menu" onClick={event => event.stopPropagation()}>
-                          <button
-                            type="button"
-                            className="menu-item"
-                            onClick={() => {
-                              handleEditNote(note)
-                              setOpenNoteMenuId(null)
-                            }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            className="menu-item menu-danger"
-                            onClick={() => {
-                              handleDeleteNote(note.id)
-                              setOpenNoteMenuId(null)
-                            }}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <SetlistNotesSection
+        editingNoteContent={editingNoteContent}
+        editingNoteId={editingNoteId}
+        newNote={newNote}
+        notes={notes}
+        onAddNote={handleAddNote}
+        onDeleteNote={handleDeleteNote}
+        onEditNote={handleEditNote}
+        onUpdateNote={handleUpdateNote}
+        openNoteMenuId={openNoteMenuId}
+        setEditingNoteContent={setEditingNoteContent}
+        setEditingNoteId={setEditingNoteId}
+        setNewNote={setNewNote}
+        setOpenNoteMenuId={updater => setOpenNoteMenuId(prev => updater(prev))}
+      />
     </div>
   )
 }

@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabaseClient'
+import { useSupabaseSession } from './components/SessionProvider'
 
 type SongStatus = 'confident' | 'known' | 'learning' | 'wishlist' | string
 
@@ -13,27 +13,9 @@ interface SongRow {
 }
 
 export default function Home() {
-  const [session, setSession] = useState<Session | null>(null)
-  const [loadingSession, setLoadingSession] = useState(true)
+  const { loading: loadingSession, session } = useSupabaseSession()
   const [loadingSongs, setLoadingSongs] = useState(false)
   const [songs, setSongs] = useState<SongRow[]>([])
-
-  useEffect(() => {
-    const fetchSession = async () => {
-      const { data } = await supabase.auth.getSession()
-      setSession(data.session)
-      setLoadingSession(false)
-    }
-
-    fetchSession()
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession)
-      setLoadingSession(false)
-    })
-
-    return () => listener.subscription.unsubscribe()
-  }, [])
 
   useEffect(() => {
     const fetchSongs = async () => {

@@ -2,11 +2,16 @@
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../../../lib/supabaseClient'
-import NoteContent from '../../components/NoteContent'
-import NoteEditor from '../../components/NoteEditor'
+import type { PracticeLoop } from '../../components/YouTubePracticePlayer'
+import ListenSection from '../../components/song-detail/ListenSection'
+import ReadSection from '../../components/song-detail/ReadSection'
+import RecordSection from '../../components/song-detail/RecordSection'
+import SetlistsSection from '../../components/song-detail/SetlistsSection'
+import ThinkSection from '../../components/song-detail/ThinkSection'
+import { useSupabaseSession } from '../../components/SessionProvider'
 import { useToast } from '../../components/ToastProvider'
+import { getYouTubeEmbedUrl } from '@/utils/youtubeHelpers'
 
 interface Song {
   id: string
@@ -44,6 +49,17 @@ interface SongRecording {
   storage_path?: string
 }
 
+interface SongLoopRecord {
+  id: string
+  song_id: string
+  link_id: string
+  user_id: string
+  name: string
+  loop_start: number
+  loop_end: number
+  created_at: string
+}
+
 interface SongGenre {
   genre_id: string
   genres: {
@@ -64,23 +80,6 @@ interface Setlist {
 type ViewMode = 'table' | 'grid' | 'tabs'
 type SectionNavId = 'listen' | 'read' | 'record' | 'think' | 'setlists'
 const SECTION_SCROLL_PADDING = 16
-
-const getYouTubeEmbedUrl = (url: string) => {
-  try {
-    const parsed = new URL(url)
-    if (parsed.hostname.includes('youtu.be')) {
-      const videoId = parsed.pathname.slice(1)
-      return videoId ? `https://www.youtube.com/embed/${videoId}` : null
-    }
-    if (parsed.hostname.includes('youtube.com')) {
-      const videoId = parsed.searchParams.get('v')
-      return videoId ? `https://www.youtube.com/embed/${videoId}` : null
-    }
-  } catch {
-    return null
-  }
-  return null
-}
 
 const getLinkSource = (url: string) => {
   try {
@@ -112,6 +111,7 @@ export default function SongDetailPage() {
   const [links, setLinks] = useState<SongLink[]>([])
   const [pdfFiles, setPdfFiles] = useState<SongFile[]>([])
   const [recordings, setRecordings] = useState<SongRecording[]>([])
+  const [savedLoops, setSavedLoops] = useState<SongLoopRecord[]>([])
   const [songGenres, setSongGenres] = useState<SongGenre[]>([])
   const [allGenres, setAllGenres] = useState<Genre[]>([])
   const [setlists, setSetlists] = useState<Setlist[]>([])
@@ -183,7 +183,7 @@ export default function SongDetailPage() {
   const [headerHeight, setHeaderHeight] = useState(68)
   const [sectionScrollOffset, setSectionScrollOffset] = useState(132)
 
-  const [session, setSession] = useState<Session | null>(null)
+  const { session } = useSupabaseSession()
   const linkClickTimeouts = useRef<Record<string, number>>({})
   const pdfClickTimeouts = useRef<Record<string, number>>({})
   const skipLinkRowClickRef = useRef(false)
@@ -226,15 +226,6 @@ export default function SongDetailPage() {
     }
     return setlists[0]?.id ?? null
   }, [globalViewMode, activeSetlistTabId, setlists])
-
-  // Load session
-  useEffect(() => {
-    const loadSession = async () => {
-      const { data } = await supabase.auth.getSession()
-      setSession(data.session)
-    }
-    loadSession()
-  }, [])
 
   useEffect(() => {
     const updateStickyOffsets = () => {
@@ -373,6 +364,13 @@ export default function SongDetailPage() {
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false })
 
+      const { data: loopData } = await supabase
+        .from('song_loops')
+        .select('*')
+        .eq('song_id', id)
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false })
+
       // All Genres (for editing)
       const { data: allGenresData } = await supabase
         .from('genres')
@@ -405,6 +403,7 @@ export default function SongDetailPage() {
       setLinks(linksData || [])
       setPdfFiles(pdfData || [])
       setRecordings(recordingsData || [])
+      setSavedLoops((loopData as SongLoopRecord[]) || [])
       setSongGenres((genreData as unknown as SongGenre[]) || [])
       setAllGenres((allGenresData as Genre[]) || [])
       setSetlists((setlistsData as Setlist[]) || [])
@@ -591,6 +590,12 @@ export default function SongDetailPage() {
       return
     }
     setLinks(prev => prev.filter(l => l.id !== linkId))
+    setSavedLoops(prev => prev.filter(loop => loop.link_id !== linkId))
+    if (previewLinkId === linkId) {
+      setPreviewYoutubeUrl(null)
+      setPreviewYoutubeTitle('')
+      setPreviewLinkId(null)
+    }
     addToast({ title: 'Link deleted', variant: 'success' })
   }
 
@@ -690,6 +695,61 @@ export default function SongDetailPage() {
       delete linkClickTimeouts.current[link.id]
     }
     window.open(link.url, '_blank', 'noopener,noreferrer')
+  }
+
+  const handleSavePracticeLoop = async ({
+    name,
+    loopStart,
+    loopEnd,
+  }: {
+    name: string
+    loopStart: number
+    loopEnd: number
+  }) => {
+    if (!id || !session?.user?.id || !previewLinkId) {
+      throw new Error('Open a YouTube link before saving a loop.')
+    }
+
+    const { data, error } = await supabase
+      .from('song_loops')
+      .insert({
+        song_id: id,
+        link_id: previewLinkId,
+        user_id: session.user.id,
+        name: name.trim(),
+        loop_start: loopStart,
+        loop_end: loopEnd,
+      })
+      .select()
+      .single()
+
+    if (error || !data) {
+      console.error('Error saving practice loop:', error)
+      throw new Error(error?.message || 'Could not save this loop.')
+    }
+
+    setSavedLoops(prev => [data as SongLoopRecord, ...prev])
+    addToast({ title: 'Loop saved', variant: 'success' })
+  }
+
+  const handleDeletePracticeLoop = async (loopId: string) => {
+    if (!session?.user?.id) {
+      throw new Error('You must be signed in to delete a loop.')
+    }
+
+    const { error } = await supabase
+      .from('song_loops')
+      .delete()
+      .eq('id', loopId)
+      .eq('user_id', session.user.id)
+
+    if (error) {
+      console.error('Error deleting practice loop:', error)
+      throw new Error(error.message || 'Could not delete this loop.')
+    }
+
+    setSavedLoops(prev => prev.filter(loop => loop.id !== loopId))
+    addToast({ title: 'Loop deleted', variant: 'success' })
   }
 
   // ---------- PDFs ----------
@@ -1366,6 +1426,16 @@ export default function SongDetailPage() {
   const linkedNotesForLink = previewLinkId
     ? notes.filter(note => note.link_id === previewLinkId)
     : []
+  const savedLoopsForPreviewLink: PracticeLoop[] = previewLinkId
+    ? savedLoops
+        .filter(loop => loop.link_id === previewLinkId)
+        .map(loop => ({
+          id: loop.id,
+          name: loop.name,
+          loopStart: loop.loop_start,
+          loopEnd: loop.loop_end,
+        }))
+    : []
   const linkedNotesForPdf = previewPdfId
     ? notes.filter(note => note.file_id === previewPdfId)
     : []
@@ -1584,1816 +1654,176 @@ export default function SongDetailPage() {
           </div>
         </div>
 
-        {/* Links */}
-        <div
-          id="section-listen"
-          ref={listenSectionRef}
-          data-section-nav-id="listen"
-          className="card p-6 mb-6"
-          style={{ scrollMarginTop: `${sectionScrollOffset}px` }}
-        >
-        <div className="section-header">
-          <div className="section-title">
-            <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-              <path
-                d="M10 13a4 4 0 0 1 0-6l2-2a4 4 0 0 1 6 6l-1 1"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-              />
-              <path
-                d="M14 11a4 4 0 0 1 0 6l-2 2a4 4 0 0 1-6-6l1-1"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-              />
-            </svg>
-            <h2 className="text-xl font-semibold">Listen</h2>
-          </div>
-        </div>
-        <div className="section-divider" />
-        <div className="flex gap-2 mb-2">
-          <input
-            type="text"
-            placeholder="Title (optional)"
-            value={linkTitle}
-            onChange={e => {
-              setLinkTitle(e.target.value)
-              if (linkError) setLinkError('')
-            }}
-            className="input flex-1"
-          />
-          <input
-            type="url"
-            placeholder="https://..."
-            value={linkUrl}
-            onChange={e => {
-              setLinkUrl(e.target.value)
-              if (linkError) setLinkError('')
-            }}
-            className="input flex-1"
-          />
-          <button
-            onClick={handleAddLink}
-            disabled={!linkUrl.trim() || !session?.user?.id}
-            className={`button-primary ${!linkUrl.trim() || !session?.user?.id ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            Add
-          </button>
-        </div>
-        {linkError && <p className="text-sm text-red-600 mb-3">{linkError}</p>}
-        {links.length === 0 ? (
-          <p className="muted">No links yet.</p>
-        ) : (
-          <>
-            {globalViewMode === 'table' && (
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Title</th>
-                    <th>Source</th>
-                    <th className="table-actions">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {links.map(link => (
-                    editingLinkId === link.id ? (
-                      <tr key={link.id}>
-                        <td colSpan={3}>
-                          <div className="table-edit">
-                            <div className="flex gap-2 mb-2">
-                              <input
-                                type="text"
-                                placeholder="Title (optional)"
-                                value={editingLinkTitle}
-                                onChange={e => {
-                                  setEditingLinkTitle(e.target.value)
-                                  if (linkError) setLinkError('')
-                                }}
-                                onKeyDown={event => {
-                                  if (event.key === 'Enter') {
-                                    event.preventDefault()
-                                    handleUpdateLink()
-                                  }
-                                }}
-                                className="input flex-1"
-                                autoFocus
-                              />
-                              <input
-                                type="url"
-                                placeholder="https://..."
-                                value={editingLinkUrl}
-                                onChange={e => {
-                                  setEditingLinkUrl(e.target.value)
-                                  if (linkError) setLinkError('')
-                                }}
-                                onKeyDown={event => {
-                                  if (event.key === 'Enter') {
-                                    event.preventDefault()
-                                    handleUpdateLink()
-                                  }
-                                }}
-                                className="input flex-1"
-                              />
-                            </div>
-                            <div className="flex gap-3">
-                              <button onClick={handleUpdateLink} className="button-primary">
-                                Save
-                              </button>
-                              <button onClick={handleCancelLinkEdit} className="button-ghost">
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : (
-                      <tr
-                        key={link.id}
-                        className="table-row row-clickable"
-                        onClick={() => {
-                          if (skipLinkRowClickRef.current) return
-                          if (!editingLinkId) handleLinkRowClick(link)
-                        }}
-                        onDoubleClick={() => {
-                          if (skipLinkRowClickRef.current) return
-                          if (!editingLinkId) handleLinkRowDoubleClick(link)
-                        }}
-                      >
-                        <td className="table-cell">{getLinkDisplayTitle(link)}</td>
-                        <td className="table-cell muted">{getLinkSource(link.url)}</td>
-                        <td className="table-cell table-actions">
-                          <div className="menu-container" onClick={event => event.stopPropagation()}>
-                            <button
-                              type="button"
-                              className="button-ghost menu-trigger"
-                              onClick={event => {
-                                event.stopPropagation()
-                                setOpenLinkMenuId(prev => (prev === link.id ? null : link.id))
-                              }}
-                            >
-                              <span className="menu-dots" aria-hidden="true">⋯</span>
-                              <span className="sr-only">Link actions</span>
-                            </button>
-                            {openLinkMenuId === link.id && (
-                              <div className="menu" onClick={event => event.stopPropagation()}>
-                                <button
-                                  type="button"
-                                  className="menu-item"
-                                  onClick={() => {
-                                    handleEditLink(link)
-                                    setOpenLinkMenuId(null)
-                                  }}
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  type="button"
-                                  className="menu-item"
-                                  onClick={() => {
-                                    window.open(link.url, '_blank', 'noopener,noreferrer')
-                                    setOpenLinkMenuId(null)
-                                  }}
-                                >
-                                  Open
-                                </button>
-                                <button
-                                  type="button"
-                                  className="menu-item menu-danger"
-                                  onClick={() => {
-                                    handleDeleteLink(link.id)
-                                    setOpenLinkMenuId(null)
-                                  }}
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  ))}
-                </tbody>
-              </table>
-            )}
-            {globalViewMode === 'grid' && (
-              <div className="grid grid-two">
-                {links.map(link => (
-                  <div
-                    key={link.id}
-                    className="row row-clickable grid-card"
-                    onClick={() => {
-                      if (skipLinkRowClickRef.current) return
-                      if (!editingLinkId) handleLinkRowClick(link)
-                    }}
-                    onDoubleClick={() => {
-                      if (skipLinkRowClickRef.current) return
-                      if (!editingLinkId) handleLinkRowDoubleClick(link)
-                    }}
-                  >
-                    {editingLinkId === link.id ? (
-                      <div>
-                        <div className="flex gap-2 mb-2">
-                          <input
-                            type="text"
-                            placeholder="Title (optional)"
-                            value={editingLinkTitle}
-                            onChange={e => {
-                              setEditingLinkTitle(e.target.value)
-                              if (linkError) setLinkError('')
-                            }}
-                            className="input flex-1"
-                            autoFocus
-                          />
-                          <input
-                            type="url"
-                            placeholder="https://..."
-                            value={editingLinkUrl}
-                            onChange={e => {
-                              setEditingLinkUrl(e.target.value)
-                              if (linkError) setLinkError('')
-                            }}
-                            className="input flex-1"
-                          />
-                        </div>
-                        <div className="flex gap-3">
-                          <button onClick={handleUpdateLink} className="button-primary">
-                            Save
-                          </button>
-                          <button onClick={handleCancelLinkEdit} className="button-ghost">
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div>
-                          <p className="text-sm font-medium">{getLinkDisplayTitle(link)}</p>
-                          <p className="text-xs muted">{getLinkSource(link.url)}</p>
-                        </div>
-                        <div className="menu-container" onClick={event => event.stopPropagation()}>
-                          <button
-                            type="button"
-                            className="button-ghost menu-trigger"
-                            onClick={event => {
-                              event.stopPropagation()
-                              setOpenLinkMenuId(prev => (prev === link.id ? null : link.id))
-                            }}
-                          >
-                            <span className="menu-dots" aria-hidden="true">⋯</span>
-                            <span className="sr-only">Link actions</span>
-                          </button>
-                          {openLinkMenuId === link.id && (
-                            <div className="menu" onClick={event => event.stopPropagation()}>
-                              <button
-                                type="button"
-                                className="menu-item"
-                                onClick={() => {
-                                  handleEditLink(link)
-                                  setOpenLinkMenuId(null)
-                                }}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                className="menu-item"
-                                onClick={() => {
-                                  window.open(link.url, '_blank', 'noopener,noreferrer')
-                                  setOpenLinkMenuId(null)
-                                }}
-                              >
-                                Open
-                              </button>
-                              <button
-                                type="button"
-                                className="menu-item menu-danger"
-                                onClick={() => {
-                                  handleDeleteLink(link.id)
-                                  setOpenLinkMenuId(null)
-                                }}
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-            {globalViewMode === 'tabs' && (
-              <div className="tabs">
-                <div className="tabs-list">
-                  {links.map(link => (
-                    <button
-                      key={link.id}
-                      type="button"
-                      className={`tab-trigger ${effectiveActiveLinkTabId === link.id ? 'tab-active' : ''}`}
-                      onClick={() => setActiveLinkTabId(link.id)}
-                    >
-                      {getLinkDisplayTitle(link)}
-                    </button>
-                  ))}
-                </div>
-                <div className="tabs-panel">
-                  {(() => {
-                    const activeLink = links.find(link => link.id === effectiveActiveLinkTabId) ?? null
-                    if (!activeLink) {
-                      return <p className="muted">Choose a link to see details.</p>
-                    }
-                    if (editingLinkId === activeLink.id) {
-                      return (
-                        <div>
-                          <div className="flex gap-2 mb-2">
-                            <input
-                              type="text"
-                              placeholder="Title (optional)"
-                              value={editingLinkTitle}
-                              onChange={e => {
-                                setEditingLinkTitle(e.target.value)
-                                if (linkError) setLinkError('')
-                              }}
-                              className="input flex-1"
-                              autoFocus
-                            />
-                            <input
-                              type="url"
-                              placeholder="https://..."
-                              value={editingLinkUrl}
-                              onChange={e => {
-                                setEditingLinkUrl(e.target.value)
-                                if (linkError) setLinkError('')
-                              }}
-                              className="input flex-1"
-                            />
-                          </div>
-                          <div className="flex gap-3">
-                            <button onClick={handleUpdateLink} className="button-primary">
-                              Save
-                            </button>
-                            <button onClick={handleCancelLinkEdit} className="button-ghost">
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      )
-                    }
-                    const isYoutube = Boolean(getYouTubeEmbedUrl(activeLink.url))
-                    return (
-                      <div className="tabs-content">
-                        <div>
-                          <p className="text-sm font-medium">{getLinkDisplayTitle(activeLink)}</p>
-                          <p className="text-xs muted">{getLinkSource(activeLink.url)}</p>
-                        </div>
-                        <div className="flex gap-2 flex-wrap">
-                          <button
-                            type="button"
-                            className="button-primary"
-                            onClick={() => handleOpenLink(activeLink)}
-                          >
-                            {isYoutube ? 'Preview' : 'Open'}
-                          </button>
-                          <button
-                            type="button"
-                            className="button-ghost"
-                            onClick={() => window.open(activeLink.url, '_blank', 'noopener,noreferrer')}
-                          >
-                            Open in new tab
-                          </button>
-                          <button
-                            type="button"
-                            className="button-ghost"
-                            onClick={() => handleEditLink(activeLink)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            className="button-ghost button-danger"
-                            onClick={() => handleDeleteLink(activeLink.id)}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  })()}
-                </div>
-              </div>
-            )}
-          </>
-        )}
-            {previewYoutubeUrl && (
-          <div className="mt-4" ref={youtubePreviewRef}>
-            <p className="label mb-2">Video preview</p>
-            <div className="card-strong p-2">
-              <p className="text-sm font-medium mb-2 mono">{previewYoutubeTitle || 'YouTube'}</p>
-              <div className="aspect-video">
-                <iframe
-                  src={previewYoutubeUrl}
-                  title={previewYoutubeTitle || 'YouTube player'}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  className="w-full h-full rounded"
-                />
-              </div>
-              <div className="mt-3">
-                <p className="label mb-2">Linked notes</p>
-                {linkedNotesForLink.length === 0 ? (
-                  <p className="text-sm muted">No linked notes yet.</p>
-                ) : (
-                  <ul className="space-y-2">
-                    {linkedNotesForLink.map(note => (
-                      <li key={note.id} className="row">
-                        <div className="note-content">
-                          <NoteContent text={note.content} />
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-        </div>
-
-        {/* PDFs */}
-        <div
-          id="section-read"
-          ref={readSectionRef}
-          data-section-nav-id="read"
-          className="card p-6 mb-6"
-          style={{ scrollMarginTop: `${sectionScrollOffset}px` }}
-        >
-        <div className="section-header">
-          <div className="section-title">
-            <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-              <path
-                d="M7 4h7l4 4v12H7z"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M14 4v4h4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <h2 className="text-xl font-semibold">Read</h2>
-          </div>
-        </div>
-        <div className="section-divider" />
-        <div className="flex gap-2 items-center mb-2">
-          <input
-            type="file"
-            accept=".pdf"
-            onChange={e => {
-              const file = e.target.files?.[0] || null
-              if (file && (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))) {
-                if (file.size > MAX_PDF_SIZE_BYTES) {
-                  setPdfError(`PDF is too large. Max size is ${Math.round(MAX_PDF_SIZE_BYTES / (1024 * 1024))}MB.`)
-                  addToast({
-                    title: 'PDF too large',
-                    description: 'Choose a smaller file and try again.',
-                    variant: 'error'
-                  })
-                  setPdfFile(null)
-                  return
-                }
-                setPdfError('')
-                setPdfFile(file)
-              } else if (file) {
-                console.error('Only PDF files are supported.')
-                setPdfError('Only PDF files are supported.')
-                addToast({ title: 'Invalid file type', description: 'Upload a PDF file.', variant: 'error' })
-              } else {
-                setPdfFile(null)
-              }
-            }}
-            className="input flex-1"
-          />
-          <button
-            onClick={handleUploadPdf}
-            disabled={!pdfFile || !session?.user?.id || uploading}
-            className={`button-primary ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            {uploading ? 'Uploading...' : 'Upload'}
-          </button>
-        </div>
-        {uploading && (
-          <div className="mt-2">
-            <div className="h-2 bg-[var(--surface-strong)] rounded">
-              <div
-                className="h-2 bg-[var(--accent)] rounded"
-                style={{ width: `${uploadProgress}%` }}
-              />
-            </div>
-            <p className="text-xs muted mt-1">{uploadProgress}%</p>
-          </div>
-        )}
-        {pdfError && <p className="text-sm text-red-600 mb-3">{pdfError}</p>}
-        {pdfFiles.length === 0 ? (
-          <p className="muted">No PDFs uploaded yet.</p>
-        ) : (
-          <>
-            {globalViewMode === 'table' && (
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th className="table-actions">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pdfFiles.map(file => (
-                    editingPdfId === file.id ? (
-                      <tr key={file.id}>
-                        <td colSpan={2}>
-                          <div className="table-edit">
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="text"
-                                value={editingPdfName}
-                                onChange={event => {
-                                  setEditingPdfName(event.target.value)
-                                  if (pdfError) setPdfError('')
-                                }}
-                                onKeyDown={event => {
-                                  if (event.key === 'Enter') {
-                                    event.preventDefault()
-                                    handleUpdatePdfName()
-                                  }
-                                }}
-                                className="input flex-1"
-                                autoFocus
-                              />
-                              <button type="button" className="button-primary" onClick={handleUpdatePdfName}>
-                                Save
-                              </button>
-                              <button type="button" className="button-ghost" onClick={handleCancelPdfEdit}>
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : (
-                      <tr
-                        key={file.id}
-                        className="table-row row-clickable"
-                        onClick={() => {
-                          if (skipPdfRowClickRef.current) return
-                          if (!editingPdfId) handlePdfRowClick(file)
-                        }}
-                        onDoubleClick={() => {
-                          if (skipPdfRowClickRef.current) return
-                          if (!editingPdfId) handlePdfRowDoubleClick(file)
-                        }}
-                      >
-                        <td className="table-cell">{file.file_name}</td>
-                        <td className="table-cell table-actions">
-                          <div className="menu-container" onClick={event => event.stopPropagation()}>
-                            <button
-                              type="button"
-                              className="button-ghost menu-trigger"
-                              onClick={event => {
-                                event.stopPropagation()
-                                setOpenPdfMenuId(prev => (prev === file.id ? null : file.id))
-                              }}
-                            >
-                              <span className="menu-dots" aria-hidden="true">⋯</span>
-                              <span className="sr-only">PDF actions</span>
-                            </button>
-                            {openPdfMenuId === file.id && (
-                              <div className="menu" onClick={event => event.stopPropagation()}>
-                                <button
-                                  type="button"
-                                  className="menu-item"
-                                  onClick={() => {
-                                    handleRenamePdf(file)
-                                    setOpenPdfMenuId(null)
-                                  }}
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  type="button"
-                                  className="menu-item"
-                                  onClick={() => {
-                                    openPdfInNewTab(file)
-                                    setOpenPdfMenuId(null)
-                                  }}
-                                >
-                                  Open
-                                </button>
-                                <button
-                                  type="button"
-                                  className="menu-item menu-danger"
-                                  onClick={() => {
-                                    handleDeletePdf(file.id)
-                                    setOpenPdfMenuId(null)
-                                  }}
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  ))}
-                </tbody>
-              </table>
-            )}
-            {globalViewMode === 'grid' && (
-              <div className="grid grid-two">
-                {pdfFiles.map(file => (
-                  <div
-                    key={file.id}
-                    className="row row-clickable grid-card"
-                    onClick={() => {
-                      if (skipPdfRowClickRef.current) return
-                      if (!editingPdfId) handlePdfRowClick(file)
-                    }}
-                    onDoubleClick={() => {
-                      if (skipPdfRowClickRef.current) return
-                      if (!editingPdfId) handlePdfRowDoubleClick(file)
-                    }}
-                  >
-                    {editingPdfId === file.id ? (
-                      <div className="w-full flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={editingPdfName}
-                          onChange={event => {
-                            setEditingPdfName(event.target.value)
-                            if (pdfError) setPdfError('')
-                          }}
-                          className="input flex-1"
-                          autoFocus
-                        />
-                        <button type="button" className="button-primary" onClick={handleUpdatePdfName}>
-                          Save
-                        </button>
-                        <button type="button" className="button-ghost" onClick={handleCancelPdfEdit}>
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <div>
-                          <p className="text-sm font-medium">{file.file_name}</p>
-                          <p className="text-xs muted">Click to preview · Double click to open</p>
-                        </div>
-                        <div className="menu-container" onClick={event => event.stopPropagation()}>
-                          <button
-                            type="button"
-                            className="button-ghost menu-trigger"
-                            onClick={event => {
-                              event.stopPropagation()
-                              setOpenPdfMenuId(prev => (prev === file.id ? null : file.id))
-                            }}
-                          >
-                            <span className="menu-dots" aria-hidden="true">⋯</span>
-                            <span className="sr-only">PDF actions</span>
-                          </button>
-                          {openPdfMenuId === file.id && (
-                            <div className="menu" onClick={event => event.stopPropagation()}>
-                              <button
-                                type="button"
-                                className="menu-item"
-                                onClick={() => {
-                                  handleRenamePdf(file)
-                                  setOpenPdfMenuId(null)
-                                }}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                className="menu-item"
-                                onClick={() => {
-                                  openPdfInNewTab(file)
-                                  setOpenPdfMenuId(null)
-                                }}
-                              >
-                                Open
-                              </button>
-                              <button
-                                type="button"
-                                className="menu-item menu-danger"
-                                onClick={() => {
-                                  handleDeletePdf(file.id)
-                                  setOpenPdfMenuId(null)
-                                }}
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-            {globalViewMode === 'tabs' && (
-              <div className="tabs">
-                <div className="tabs-list">
-                  {pdfFiles.map(file => (
-                    <button
-                      key={file.id}
-                      type="button"
-                      className={`tab-trigger ${effectiveActivePdfTabId === file.id ? 'tab-active' : ''}`}
-                      onClick={() => setActivePdfTabId(file.id)}
-                    >
-                      {file.file_name}
-                    </button>
-                  ))}
-                </div>
-                <div className="tabs-panel">
-                  {(() => {
-                    const activeFile = pdfFiles.find(file => file.id === effectiveActivePdfTabId) ?? null
-                    if (!activeFile) {
-                      return <p className="muted">Choose a file to see details.</p>
-                    }
-                    if (editingPdfId === activeFile.id) {
-                      return (
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={editingPdfName}
-                            onChange={event => {
-                              setEditingPdfName(event.target.value)
-                              if (pdfError) setPdfError('')
-                            }}
-                            className="input flex-1"
-                            autoFocus
-                          />
-                          <button type="button" className="button-primary" onClick={handleUpdatePdfName}>
-                            Save
-                          </button>
-                          <button type="button" className="button-ghost" onClick={handleCancelPdfEdit}>
-                            Cancel
-                          </button>
-                        </div>
-                      )
-                    }
-                    return (
-                      <div className="tabs-content">
-                        <div>
-                          <p className="text-sm font-medium">{activeFile.file_name}</p>
-                          <p className="text-xs muted">PDF file stored in your library.</p>
-                        </div>
-                        <div className="flex gap-2 flex-wrap">
-                          <button
-                            type="button"
-                            className="button-primary"
-                            onClick={() => handlePreviewPdf(activeFile)}
-                          >
-                            {previewPdfId === activeFile.id ? 'Hide preview' : 'Preview'}
-                          </button>
-                          <button
-                            type="button"
-                            className="button-ghost"
-                            onClick={() => openPdfInNewTab(activeFile)}
-                          >
-                            Open in new tab
-                          </button>
-                          <button
-                            type="button"
-                            className="button-ghost"
-                            onClick={() => handleRenamePdf(activeFile)}
-                          >
-                            Edit name
-                          </button>
-                          <button
-                            type="button"
-                            className="button-ghost button-danger"
-                            onClick={() => handleDeletePdf(activeFile.id)}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  })()}
-                </div>
-              </div>
-            )}
-            {previewPdfUrl && (
-              <div className="mt-4" ref={pdfPreviewRef}>
-                <p className="label mb-2">PDF preview</p>
-                <div className="card-strong overflow-hidden">
-                  <iframe
-                    src={previewPdfUrl}
-                    title="PDF preview"
-                    className="w-full h-[32rem]"
-                  />
-                </div>
-                <div className="mt-3">
-                  <p className="label mb-2">Linked notes</p>
-                  {linkedNotesForPdf.length === 0 ? (
-                    <p className="text-sm muted">No linked notes yet.</p>
-                  ) : (
-                    <ul className="space-y-2">
-                      {linkedNotesForPdf.map(note => (
-                        <li key={note.id} className="row">
-                          <div className="note-content">
-                            <NoteContent text={note.content} />
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
-            )}
-          </>
-        )}
-        </div>
-
-        {/* Recordings */}
-        <div
-          id="section-record"
-          ref={recordSectionRef}
-          data-section-nav-id="record"
-          className="card p-6 mb-6"
-          style={{ scrollMarginTop: `${sectionScrollOffset}px` }}
-        >
-          <div className="section-header">
-            <div className="section-title">
-              <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-                <path
-                  d="M12 3v10"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="M8 7a4 4 0 0 0 8 0"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="M6 11v1a6 6 0 0 0 12 0v-1"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="M12 19v2"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                />
-              </svg>
-              <h2 className="text-xl font-semibold">Record</h2>
-            </div>
-          </div>
-          <div className="section-divider" />
-
-          <div className="grid gap-4 lg:grid-cols-[1.05fr_1.45fr]">
-            <div className="space-y-4">
-              <div className="card-strong p-4">
-                <p className="label mb-3">Record memo</p>
-                <div className="flex flex-wrap gap-2 items-center">
-                  <button
-                    type="button"
-                    onClick={recording ? handleStopRecording : handleStartRecording}
-                    className={`button-primary ${recording ? 'button-danger' : ''}`}
-                  >
-                    {recording ? 'Stop' : 'Record'}
-                  </button>
-                  <input
-                    type="text"
-                    placeholder="Recording name (optional)"
-                    value={recordingName}
-                    onChange={event => setRecordingName(event.target.value)}
-                    className="input flex-1 min-w-[200px]"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSaveRecording}
-                    disabled={!recordingAudioBlob || audioUploading}
-                    className={`button-ghost ${!recordingAudioBlob || audioUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    {audioUploading ? 'Saving...' : 'Save'}
-                  </button>
-                </div>
-                {recording && <p className="text-xs muted mt-2">Recording in progress…</p>}
-                {!recording && recordingAudioBlob && (
-                  <p className="text-xs text-emerald-500 mt-2">Recording ready to save.</p>
-                )}
-              </div>
-
-              <div className="card-strong p-4">
-                <p className="label mb-3">Upload audio</p>
-                <div className="flex flex-wrap gap-2 items-center">
-                  <input
-                    type="file"
-                    accept="audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/webm"
-                    onChange={event => {
-                      const file = event.target.files?.[0] || null
-                      if (!file) {
-                        setAudioFile(null)
-                        return
-                      }
-                      if (!file.type.startsWith('audio/')) {
-                        setAudioError('Only audio files are supported.')
-                        setAudioFile(null)
-                        return
-                      }
-                      if (file.size > MAX_AUDIO_SIZE_BYTES) {
-                        setAudioError(`Audio is too large. Max size is ${Math.round(MAX_AUDIO_SIZE_BYTES / (1024 * 1024))}MB.`)
-                        setAudioFile(null)
-                        return
-                      }
-                      setAudioError('')
-                      setAudioFile(file)
-                    }}
-                    className="input flex-1 min-w-[220px]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (audioFile) handleUploadAudio(audioFile)
-                    }}
-                    disabled={!audioFile || audioUploading}
-                    className={`button-primary ${!audioFile || audioUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    {audioUploading ? 'Uploading...' : 'Upload'}
-                  </button>
-                </div>
-                {audioError && <p className="text-sm text-red-600 mt-2">{audioError}</p>}
-              </div>
-            </div>
-
-            <div className="card-strong p-4">
-              <div className="flex items-center justify-between mb-3">
-                <p className="label">Library</p>
-                <span className="text-xs muted">{recordings.length} item{recordings.length === 1 ? '' : 's'}</span>
-              </div>
-
-              {recordings.length === 0 ? (
-                <p className="muted">No recordings yet.</p>
-              ) : (
-                <ul className="space-y-3">
-                  {recordings.map(recordingItem => (
-                    <li
-                      key={recordingItem.id}
-                      className="row space-y-3"
-                      onClick={() => {
-                        if (editingRecordingId) return
-                        handlePreviewRecording(recordingItem)
-                      }}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          {editingRecordingId === recordingItem.id ? (
-                            <div className="flex flex-wrap gap-2 items-center">
-                              <input
-                                type="text"
-                                value={editingRecordingName}
-                                onChange={event => setEditingRecordingName(event.target.value)}
-                                className="input flex-1 min-w-[200px]"
-                                autoFocus
-                              />
-                              <button
-                                type="button"
-                                className="button-primary"
-                                onClick={event => {
-                                  event.stopPropagation()
-                                  handleUpdateRecordingName()
-                                }}
-                              >
-                                Save
-                              </button>
-                              <button
-                                type="button"
-                                className="button-ghost"
-                                onClick={event => {
-                                  event.stopPropagation()
-                                  handleCancelRecordingEdit()
-                                }}
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ) : (
-                            <>
-                              <p className="text-sm font-medium truncate">{recordingItem.file_name}</p>
-                              <p className="text-xs muted">Click to play</p>
-                            </>
-                          )}
-                        </div>
-                        {editingRecordingId !== recordingItem.id && (
-                          <div className="menu-container" onClick={event => event.stopPropagation()}>
-                            <button
-                              type="button"
-                              className="button-ghost menu-trigger"
-                              onClick={event => {
-                                event.stopPropagation()
-                                setOpenRecordingMenuId(prev => (prev === recordingItem.id ? null : recordingItem.id))
-                              }}
-                            >
-                              <span className="menu-dots" aria-hidden="true">⋯</span>
-                              <span className="sr-only">Recording actions</span>
-                            </button>
-                            {openRecordingMenuId === recordingItem.id && (
-                              <div className="menu" onClick={event => event.stopPropagation()}>
-                                <button
-                                  type="button"
-                                  className="menu-item"
-                                  onClick={() => {
-                                    handleRenameRecording(recordingItem)
-                                    setOpenRecordingMenuId(null)
-                                  }}
-                                >
-                                  Rename
-                                </button>
-                                <button
-                                  type="button"
-                                  className="menu-item menu-danger"
-                                  onClick={() => {
-                                    handleDeleteRecording(recordingItem.id)
-                                    setOpenRecordingMenuId(null)
-                                  }}
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      {previewAudioId === recordingItem.id && previewAudioUrl && (
-                        <div className="space-y-3">
-                          <audio controls autoPlay className="w-full" src={previewAudioUrl} />
-                          <div>
-                            <p className="label mb-2">Linked notes</p>
-                            {linkedNotesForAudio.length === 0 ? (
-                              <p className="text-sm muted">No linked notes yet.</p>
-                            ) : (
-                              <ul className="space-y-2">
-                                {linkedNotesForAudio.map(note => (
-                                  <li key={note.id} className="row">
-                                    <div className="note-content">
-                                      <NoteContent text={note.content} />
-                                    </div>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Notes */}
-        <div
-          id="section-think"
-          ref={thinkSectionRef}
-          data-section-nav-id="think"
-          className="card p-6"
-          style={{ scrollMarginTop: `${sectionScrollOffset}px` }}
-        >
-        <div className="section-header">
-          <div className="section-title">
-            <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-              <path
-                d="M6 5h12v14H6z"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M9 9h6M9 13h6"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-              />
-            </svg>
-            <h2 className="text-xl font-semibold">Think</h2>
-          </div>
-        </div>
-        <div className="section-divider" />
-        <NoteEditor
-          value={newNote}
-          onChange={setNewNote}
-          placeholder="Add a note..."
-          className="input note-editor w-full mb-2 min-h-[100px]"
+        <ListenSection
+          editingLinkId={editingLinkId}
+          editingLinkTitle={editingLinkTitle}
+          editingLinkUrl={editingLinkUrl}
+          effectiveActiveLinkTabId={effectiveActiveLinkTabId}
+          getLinkDisplayTitle={getLinkDisplayTitle}
+          getLinkSource={getLinkSource}
+          globalViewMode={globalViewMode}
+          handleAddLink={handleAddLink}
+          handleCancelLinkEdit={handleCancelLinkEdit}
+          handleDeleteLink={handleDeleteLink}
+          handleDeletePracticeLoop={handleDeletePracticeLoop}
+          handleEditLink={handleEditLink}
+          handleLinkRowClick={handleLinkRowClick}
+          handleLinkRowDoubleClick={handleLinkRowDoubleClick}
+          handleOpenLink={handleOpenLink}
+          handleSavePracticeLoop={handleSavePracticeLoop}
+          handleUpdateLink={handleUpdateLink}
+          linkError={linkError}
+          linkTitle={linkTitle}
+          linkUrl={linkUrl}
+          linkedNotesForLink={linkedNotesForLink}
+          links={links}
+          listenSectionRef={listenSectionRef}
+          openLinkMenuId={openLinkMenuId}
+          previewYoutubeTitle={previewYoutubeTitle}
+          previewYoutubeUrl={previewYoutubeUrl}
+          savedLoopsForPreviewLink={savedLoopsForPreviewLink}
+          scrollMarginTop={sectionScrollOffset}
+          sectionNavId="listen"
+          sessionUserId={session?.user?.id}
+          setActiveLinkTabId={setActiveLinkTabId}
+          setEditingLinkTitle={setEditingLinkTitle}
+          setEditingLinkUrl={setEditingLinkUrl}
+          setLinkError={setLinkError}
+          setLinkTitle={setLinkTitle}
+          setLinkUrl={setLinkUrl}
+          setOpenLinkMenuId={setOpenLinkMenuId}
+          skipLinkRowClickRef={skipLinkRowClickRef}
+          youtubePreviewRef={youtubePreviewRef}
         />
-        <div className="flex flex-wrap gap-2 mb-3">
-          <select
-            value={newNoteLinkId}
-            onChange={event => {
-              const value = event.target.value
-              setNewNoteLinkId(value)
-              if (value) {
-                setNewNotePdfId('')
-                setNewNoteRecordingId('')
-              }
-            }}
-            className="input flex-1 min-w-[220px]"
-            disabled={links.length === 0}
-          >
-            <option value="">Link to Listen item (optional)</option>
-            {links.map(link => (
-              <option key={link.id} value={link.id}>
-                {link.title || link.url}
-              </option>
-            ))}
-          </select>
-          <select
-            value={newNotePdfId}
-            onChange={event => {
-              const value = event.target.value
-              setNewNotePdfId(value)
-              if (value) {
-                setNewNoteLinkId('')
-                setNewNoteRecordingId('')
-              }
-            }}
-            className="input flex-1 min-w-[220px]"
-            disabled={pdfFiles.length === 0}
-          >
-            <option value="">Link to Read item (optional)</option>
-            {pdfFiles.map(file => (
-              <option key={file.id} value={file.id}>
-                {file.file_name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={newNoteRecordingId}
-            onChange={event => {
-              const value = event.target.value
-              setNewNoteRecordingId(value)
-              if (value) {
-                setNewNoteLinkId('')
-                setNewNotePdfId('')
-              }
-            }}
-            className="input flex-1 min-w-[220px]"
-            disabled={recordings.length === 0}
-          >
-            <option value="">Link to Record item (optional)</option>
-            {recordings.map(recordingItem => (
-              <option key={recordingItem.id} value={recordingItem.id}>
-                {recordingItem.file_name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <button onClick={handleAddNote} className="button-primary mb-6">Save Note</button>
-        {notes.length === 0 ? (
-          <p className="muted">No notes yet.</p>
-        ) : (
-          <>
-            {globalViewMode === 'table' && (
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Note</th>
-                    <th className="table-actions">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {notes.map(note => (
-                    editingNoteId === note.id ? (
-                      <tr key={note.id}>
-                        <td colSpan={2}>
-                          <div className="table-edit">
-                            <NoteEditor
-                              value={editingNoteContent}
-                              onChange={setEditingNoteContent}
-                              placeholder="Edit note..."
-                              className="input note-editor w-full mb-2 min-h-[100px]"
-                            />
-                            <div className="flex flex-wrap gap-2 mb-3">
-                              <select
-                                value={editingNoteLinkId}
-                                onChange={event => {
-                                  const value = event.target.value
-                                  setEditingNoteLinkId(value)
-                                  if (value) {
-                                    setEditingNotePdfId('')
-                                    setEditingNoteRecordingId('')
-                                  }
-                                }}
-                                className="input flex-1 min-w-[220px]"
-                                disabled={links.length === 0}
-                              >
-                                <option value="">Link to Listen item (optional)</option>
-                                {links.map(link => (
-                                  <option key={link.id} value={link.id}>
-                                    {link.title || link.url}
-                                  </option>
-                                ))}
-                              </select>
-                              <select
-                                value={editingNotePdfId}
-                                onChange={event => {
-                                  const value = event.target.value
-                                  setEditingNotePdfId(value)
-                                  if (value) {
-                                    setEditingNoteLinkId('')
-                                    setEditingNoteRecordingId('')
-                                  }
-                                }}
-                                className="input flex-1 min-w-[220px]"
-                                disabled={pdfFiles.length === 0}
-                              >
-                                <option value="">Link to Read item (optional)</option>
-                                {pdfFiles.map(file => (
-                                  <option key={file.id} value={file.id}>
-                                    {file.file_name}
-                                  </option>
-                                ))}
-                              </select>
-                              <select
-                                value={editingNoteRecordingId}
-                                onChange={event => {
-                                  const value = event.target.value
-                                  setEditingNoteRecordingId(value)
-                                  if (value) {
-                                    setEditingNoteLinkId('')
-                                    setEditingNotePdfId('')
-                                  }
-                                }}
-                                className="input flex-1 min-w-[220px]"
-                                disabled={recordings.length === 0}
-                              >
-                                <option value="">Link to Record item (optional)</option>
-                                {recordings.map(recordingItem => (
-                                  <option key={recordingItem.id} value={recordingItem.id}>
-                                    {recordingItem.file_name}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div className="flex gap-3">
-                              <button onClick={handleUpdateNote} className="button-primary">
-                                Save
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setEditingNoteId(null)
-                                  setEditingNoteContent('')
-                                  setEditingNoteLinkId('')
-                                  setEditingNotePdfId('')
-                                  setEditingNoteRecordingId('')
-                                }}
-                                className="button-ghost"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : (
-                      <tr key={note.id} className="table-row">
-                        <td className="table-cell note-preview">
-                          <NoteContent text={note.content} />
-                        </td>
-                        <td className="table-cell table-actions">
-                          <div className="menu-container" onClick={event => event.stopPropagation()}>
-                            <button
-                              type="button"
-                              className="button-ghost menu-trigger"
-                              onClick={event => {
-                                event.stopPropagation()
-                                setOpenNoteMenuId(prev => (prev === note.id ? null : note.id))
-                              }}
-                            >
-                              <span className="menu-dots" aria-hidden="true">⋯</span>
-                              <span className="sr-only">Note actions</span>
-                            </button>
-                            {openNoteMenuId === note.id && (
-                              <div className="menu" onClick={event => event.stopPropagation()}>
-                                <button
-                                  type="button"
-                                  className="menu-item"
-                                  onClick={() => {
-                                    handleEditNote(note)
-                                    setOpenNoteMenuId(null)
-                                  }}
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  type="button"
-                                  className="menu-item menu-danger"
-                                  onClick={() => {
-                                    handleDeleteNote(note.id)
-                                    setOpenNoteMenuId(null)
-                                  }}
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  ))}
-                </tbody>
-              </table>
-            )}
-            {globalViewMode === 'grid' && (
-              <div className="grid grid-two">
-                {notes.map(note => (
-                  <div
-                    key={note.id}
-                    className={`row grid-card ${openNoteMenuId === note.id ? 'row-menu-open' : ''}`}
-                  >
-                    {editingNoteId === note.id ? (
-                      <div className="w-full">
-                        <NoteEditor
-                          value={editingNoteContent}
-                          onChange={setEditingNoteContent}
-                          placeholder="Edit note..."
-                          className="input note-editor w-full mb-2 min-h-[100px]"
-                        />
-                        <div className="flex flex-wrap gap-2 mb-3">
-                          <select
-                            value={editingNoteLinkId}
-                            onChange={event => {
-                              const value = event.target.value
-                              setEditingNoteLinkId(value)
-                              if (value) {
-                                setEditingNotePdfId('')
-                                setEditingNoteRecordingId('')
-                              }
-                            }}
-                            className="input flex-1 min-w-[220px]"
-                            disabled={links.length === 0}
-                          >
-                            <option value="">Link to Listen item (optional)</option>
-                            {links.map(link => (
-                              <option key={link.id} value={link.id}>
-                                {link.title || link.url}
-                              </option>
-                            ))}
-                          </select>
-                          <select
-                            value={editingNotePdfId}
-                            onChange={event => {
-                              const value = event.target.value
-                              setEditingNotePdfId(value)
-                              if (value) {
-                                setEditingNoteLinkId('')
-                                setEditingNoteRecordingId('')
-                              }
-                            }}
-                            className="input flex-1 min-w-[220px]"
-                            disabled={pdfFiles.length === 0}
-                          >
-                            <option value="">Link to Read item (optional)</option>
-                            {pdfFiles.map(file => (
-                              <option key={file.id} value={file.id}>
-                                {file.file_name}
-                              </option>
-                            ))}
-                          </select>
-                          <select
-                            value={editingNoteRecordingId}
-                            onChange={event => {
-                              const value = event.target.value
-                              setEditingNoteRecordingId(value)
-                              if (value) {
-                                setEditingNoteLinkId('')
-                                setEditingNotePdfId('')
-                              }
-                            }}
-                            className="input flex-1 min-w-[220px]"
-                            disabled={recordings.length === 0}
-                          >
-                            <option value="">Link to Record item (optional)</option>
-                            {recordings.map(recordingItem => (
-                              <option key={recordingItem.id} value={recordingItem.id}>
-                                {recordingItem.file_name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="flex gap-3">
-                          <button onClick={handleUpdateNote} className="button-primary">
-                            Save
-                          </button>
-                          <button
-                            onClick={() => {
-                              setEditingNoteId(null)
-                              setEditingNoteContent('')
-                              setEditingNoteLinkId('')
-                              setEditingNotePdfId('')
-                              setEditingNoteRecordingId('')
-                            }}
-                            className="button-ghost"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="note-content flex-1">
-                          <NoteContent text={note.content} />
-                        </div>
-                        <div className="menu-container" onClick={event => event.stopPropagation()}>
-                          <button
-                            type="button"
-                            className="button-ghost menu-trigger"
-                            onClick={event => {
-                              event.stopPropagation()
-                              setOpenNoteMenuId(prev => (prev === note.id ? null : note.id))
-                            }}
-                          >
-                            <span className="menu-dots" aria-hidden="true">⋯</span>
-                            <span className="sr-only">Note actions</span>
-                          </button>
-                          {openNoteMenuId === note.id && (
-                            <div className="menu" onClick={event => event.stopPropagation()}>
-                              <button
-                                type="button"
-                                className="menu-item"
-                                onClick={() => {
-                                  handleEditNote(note)
-                                  setOpenNoteMenuId(null)
-                                }}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                className="menu-item menu-danger"
-                                onClick={() => {
-                                  handleDeleteNote(note.id)
-                                  setOpenNoteMenuId(null)
-                                }}
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-            {globalViewMode === 'tabs' && (
-              <div className="tabs">
-                <div className="tabs-list">
-                  {notes.map((note, index) => (
-                    <button
-                      key={note.id}
-                      type="button"
-                      className={`tab-trigger ${effectiveActiveNoteTabId === note.id ? 'tab-active' : ''}`}
-                      onClick={() => setActiveNoteTabId(note.id)}
-                    >
-                      {getNoteLabel(note, index)}
-                    </button>
-                  ))}
-                </div>
-                <div className="tabs-panel">
-                  {(() => {
-                    const activeNote = notes.find(note => note.id === effectiveActiveNoteTabId) ?? null
-                    if (!activeNote) {
-                      return <p className="muted">Choose a note to see details.</p>
-                    }
-                    if (editingNoteId === activeNote.id) {
-                      return (
-                        <div className="w-full">
-                          <NoteEditor
-                            value={editingNoteContent}
-                            onChange={setEditingNoteContent}
-                            placeholder="Edit note..."
-                            className="input note-editor w-full mb-2 min-h-[100px]"
-                          />
-                          <div className="flex flex-wrap gap-2 mb-3">
-                            <select
-                              value={editingNoteLinkId}
-                              onChange={event => {
-                                const value = event.target.value
-                                setEditingNoteLinkId(value)
-                                if (value) {
-                                  setEditingNotePdfId('')
-                                  setEditingNoteRecordingId('')
-                                }
-                              }}
-                              className="input flex-1 min-w-[220px]"
-                              disabled={links.length === 0}
-                            >
-                              <option value="">Link to Listen item (optional)</option>
-                              {links.map(link => (
-                                <option key={link.id} value={link.id}>
-                                  {link.title || link.url}
-                                </option>
-                              ))}
-                            </select>
-                            <select
-                              value={editingNotePdfId}
-                              onChange={event => {
-                                const value = event.target.value
-                                setEditingNotePdfId(value)
-                                if (value) {
-                                  setEditingNoteLinkId('')
-                                  setEditingNoteRecordingId('')
-                                }
-                              }}
-                              className="input flex-1 min-w-[220px]"
-                              disabled={pdfFiles.length === 0}
-                            >
-                              <option value="">Link to Read item (optional)</option>
-                              {pdfFiles.map(file => (
-                                <option key={file.id} value={file.id}>
-                                  {file.file_name}
-                                </option>
-                              ))}
-                            </select>
-                            <select
-                              value={editingNoteRecordingId}
-                              onChange={event => {
-                                const value = event.target.value
-                                setEditingNoteRecordingId(value)
-                                if (value) {
-                                  setEditingNoteLinkId('')
-                                  setEditingNotePdfId('')
-                                }
-                              }}
-                              className="input flex-1 min-w-[220px]"
-                              disabled={recordings.length === 0}
-                            >
-                              <option value="">Link to Record item (optional)</option>
-                              {recordings.map(recordingItem => (
-                                <option key={recordingItem.id} value={recordingItem.id}>
-                                  {recordingItem.file_name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <div className="flex gap-3">
-                            <button onClick={handleUpdateNote} className="button-primary">
-                              Save
-                            </button>
-                            <button
-                              onClick={() => {
-                                setEditingNoteId(null)
-                                setEditingNoteContent('')
-                                setEditingNoteLinkId('')
-                                setEditingNotePdfId('')
-                                setEditingNoteRecordingId('')
-                              }}
-                              className="button-ghost"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      )
-                    }
-                    return (
-                      <div className="tabs-content">
-                        <div className="note-content">
-                          <NoteContent text={activeNote.content} />
-                        </div>
-                        <div className="flex gap-2 flex-wrap">
-                          <button
-                            type="button"
-                            className="button-ghost"
-                            onClick={() => handleEditNote(activeNote)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            className="button-ghost button-danger"
-                            onClick={() => handleDeleteNote(activeNote.id)}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  })()}
-                </div>
-              </div>
-            )}
-          </>
-        )}
-        </div>
 
-        {/* Setlists */}
-        <div
-          id="section-setlists"
-          ref={setlistsSectionRef}
-          data-section-nav-id="setlists"
-          className="card p-6 mt-6"
-          style={{ scrollMarginTop: `${sectionScrollOffset}px` }}
-        >
-        <div className="section-header">
-          <div className="section-title">
-            <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-              <path
-                d="M7 6h10M7 12h10M7 18h6"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-              />
-            </svg>
-            <h2 className="text-xl font-semibold">Setlists</h2>
-          </div>
-        </div>
-        <div className="section-divider" />
+        <ReadSection
+          addToast={addToast}
+          editingPdfId={editingPdfId}
+          editingPdfName={editingPdfName}
+          effectiveActivePdfTabId={effectiveActivePdfTabId}
+          globalViewMode={globalViewMode}
+          handleCancelPdfEdit={handleCancelPdfEdit}
+          handleDeletePdf={handleDeletePdf}
+          handlePdfRowClick={handlePdfRowClick}
+          handlePdfRowDoubleClick={handlePdfRowDoubleClick}
+          handlePreviewPdf={handlePreviewPdf}
+          handleRenamePdf={handleRenamePdf}
+          handleUpdatePdfName={handleUpdatePdfName}
+          handleUploadPdf={handleUploadPdf}
+          linkedNotesForPdf={linkedNotesForPdf}
+          maxPdfSizeBytes={MAX_PDF_SIZE_BYTES}
+          openPdfInNewTab={openPdfInNewTab}
+          openPdfMenuId={openPdfMenuId}
+          pdfError={pdfError}
+          pdfFile={pdfFile}
+          pdfFiles={pdfFiles}
+          pdfPreviewRef={pdfPreviewRef}
+          previewPdfId={previewPdfId}
+          previewPdfUrl={previewPdfUrl}
+          readSectionRef={readSectionRef}
+          scrollMarginTop={sectionScrollOffset}
+          sectionNavId="read"
+          sessionUserId={session?.user?.id}
+          setActivePdfTabId={setActivePdfTabId}
+          setEditingPdfName={setEditingPdfName}
+          setOpenPdfMenuId={setOpenPdfMenuId}
+          setPdfError={setPdfError}
+          setPdfFile={setPdfFile}
+          skipPdfRowClickRef={skipPdfRowClickRef}
+          uploading={uploading}
+          uploadProgress={uploadProgress}
+        />
 
-        <div className="grid gap-3">
-          <div className="flex items-center gap-3">
-            <span className="label w-32 text-base">Add to:</span>
-            <select
-              value={selectedSetlistId}
-              onChange={e => setSelectedSetlistId(e.target.value)}
-              className="input flex-1"
-            >
-              <option value="">Choose setlist…</option>
-              {setlists.map(setlist => (
-                <option key={setlist.id} value={setlist.id}>
-                  {setlist.name}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={() => handleAddSongToSetlist()}
-              disabled={!selectedSetlistId}
-              className={`button-primary ${!selectedSetlistId ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              Add
-            </button>
-          </div>
+        <RecordSection
+          audioError={audioError}
+          audioFile={audioFile}
+          audioUploading={audioUploading}
+          editingRecordingId={editingRecordingId}
+          editingRecordingName={editingRecordingName}
+          handleCancelRecordingEdit={handleCancelRecordingEdit}
+          handleDeleteRecording={handleDeleteRecording}
+          handlePreviewRecording={handlePreviewRecording}
+          handleRenameRecording={handleRenameRecording}
+          handleSaveRecording={handleSaveRecording}
+          handleStartRecording={handleStartRecording}
+          handleStopRecording={handleStopRecording}
+          handleUpdateRecordingName={handleUpdateRecordingName}
+          handleUploadAudio={handleUploadAudio}
+          linkedNotesForAudio={linkedNotesForAudio}
+          maxAudioSizeBytes={MAX_AUDIO_SIZE_BYTES}
+          openRecordingMenuId={openRecordingMenuId}
+          previewAudioId={previewAudioId}
+          previewAudioUrl={previewAudioUrl}
+          recordSectionRef={recordSectionRef}
+          recording={recording}
+          recordingAudioBlob={recordingAudioBlob}
+          recordingName={recordingName}
+          recordings={recordings}
+          scrollMarginTop={sectionScrollOffset}
+          sectionNavId="record"
+          setAudioError={setAudioError}
+          setAudioFile={setAudioFile}
+          setEditingRecordingName={setEditingRecordingName}
+          setOpenRecordingMenuId={setOpenRecordingMenuId}
+          setRecordingName={setRecordingName}
+        />
 
-          <div className="flex items-center gap-3">
-            <span className="label w-32 text-base">Create new setlist:</span>
-            <input
-              type="text"
-              placeholder="New setlist name"
-              value={newSetlistName}
-              onChange={e => setNewSetlistName(e.target.value)}
-              className="input flex-1"
-            />
-            <button
-              onClick={handleCreateSetlistAndAdd}
-              disabled={!newSetlistName.trim() || !session?.user?.id}
-              className={`button-ghost ${!newSetlistName.trim() || !session?.user?.id ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              Create
-            </button>
-          </div>
-        </div>
+        <ThinkSection
+          editingNoteContent={editingNoteContent}
+          editingNoteId={editingNoteId}
+          editingNoteLinkId={editingNoteLinkId}
+          editingNotePdfId={editingNotePdfId}
+          editingNoteRecordingId={editingNoteRecordingId}
+          effectiveActiveNoteTabId={effectiveActiveNoteTabId}
+          getNoteLabel={getNoteLabel}
+          globalViewMode={globalViewMode}
+          handleAddNote={handleAddNote}
+          handleDeleteNote={handleDeleteNote}
+          handleEditNote={handleEditNote}
+          handleUpdateNote={handleUpdateNote}
+          links={links}
+          newNote={newNote}
+          newNoteLinkId={newNoteLinkId}
+          newNotePdfId={newNotePdfId}
+          newNoteRecordingId={newNoteRecordingId}
+          notes={notes}
+          openNoteMenuId={openNoteMenuId}
+          pdfFiles={pdfFiles}
+          recordings={recordings}
+          scrollMarginTop={sectionScrollOffset}
+          sectionNavId="think"
+          setActiveNoteTabId={setActiveNoteTabId}
+          setEditingNoteContent={setEditingNoteContent}
+          setEditingNoteId={setEditingNoteId}
+          setEditingNoteLinkId={setEditingNoteLinkId}
+          setEditingNotePdfId={setEditingNotePdfId}
+          setEditingNoteRecordingId={setEditingNoteRecordingId}
+          setNewNote={setNewNote}
+          setNewNoteLinkId={setNewNoteLinkId}
+          setNewNotePdfId={setNewNotePdfId}
+          setNewNoteRecordingId={setNewNoteRecordingId}
+          setOpenNoteMenuId={setOpenNoteMenuId}
+          thinkSectionRef={thinkSectionRef}
+        />
 
-        {setlistError && <p className="text-sm text-red-600 mt-2">{setlistError}</p>}
-        <div className="mt-4">
-          {setlists.length === 0 ? (
-            <p className="text-sm muted">No setlists yet.</p>
-          ) : (
-            <>
-              {globalViewMode === 'table' && (
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Setlist</th>
-                      <th>Status</th>
-                      <th className="table-actions">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {setlists.map(setlist => {
-                      const isInSetlist = songSetlistIds.includes(setlist.id)
-                      return (
-                        <tr key={setlist.id} className="table-row">
-                          <td className="table-cell">{setlist.name}</td>
-                          <td className="table-cell">
-                            {isInSetlist ? <span className="badge">Added</span> : <span className="muted">Not added</span>}
-                          </td>
-                          <td className="table-cell table-actions">
-                            {!isInSetlist && (
-                              <button
-                                type="button"
-                                className="button-primary"
-                                onClick={() => handleAddSongToSetlist(setlist.id)}
-                              >
-                                Add
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              )}
-              {globalViewMode === 'grid' && (
-                <div className="grid grid-two">
-                  {setlists.map(setlist => {
-                    const isInSetlist = songSetlistIds.includes(setlist.id)
-                    return (
-                      <div key={setlist.id} className="row grid-card">
-                        <div>
-                          <p className="text-sm font-medium">{setlist.name}</p>
-                          <p className="text-xs muted">{isInSetlist ? 'Added' : 'Not added yet'}</p>
-                        </div>
-                        {!isInSetlist && (
-                          <button
-                            type="button"
-                            className="button-primary"
-                            onClick={() => handleAddSongToSetlist(setlist.id)}
-                          >
-                            Add
-                          </button>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-              {globalViewMode === 'tabs' && (
-                <div className="tabs">
-                  <div className="tabs-list">
-                    {setlists.map(setlist => (
-                      <button
-                        key={setlist.id}
-                        type="button"
-                        className={`tab-trigger ${effectiveActiveSetlistTabId === setlist.id ? 'tab-active' : ''}`}
-                        onClick={() => setActiveSetlistTabId(setlist.id)}
-                      >
-                        {setlist.name}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="tabs-panel">
-                    {(() => {
-                      const activeSetlist =
-                        setlists.find(setlist => setlist.id === effectiveActiveSetlistTabId) ?? null
-                      if (!activeSetlist) {
-                        return <p className="muted">Choose a setlist to see details.</p>
-                      }
-                      const isInSetlist = songSetlistIds.includes(activeSetlist.id)
-                      return (
-                        <div className="tabs-content">
-                          <div>
-                            <p className="text-sm font-medium">{activeSetlist.name}</p>
-                            <p className="text-xs muted">{isInSetlist ? 'Song is in this setlist.' : 'Song is not in this setlist.'}</p>
-                          </div>
-                          {!isInSetlist && (
-                            <button
-                              type="button"
-                              className="button-primary"
-                              onClick={() => handleAddSongToSetlist(activeSetlist.id)}
-                            >
-                              Add to setlist
-                            </button>
-                          )}
-                        </div>
-                      )
-                    })()}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-        </div>
+        <SetlistsSection
+          effectiveActiveSetlistTabId={effectiveActiveSetlistTabId}
+          globalViewMode={globalViewMode}
+          handleAddSongToSetlist={handleAddSongToSetlist}
+          handleCreateSetlistAndAdd={handleCreateSetlistAndAdd}
+          newSetlistName={newSetlistName}
+          scrollMarginTop={sectionScrollOffset}
+          sectionNavId="setlists"
+          selectedSetlistId={selectedSetlistId}
+          sessionUserId={session?.user?.id}
+          setActiveSetlistTabId={setActiveSetlistTabId}
+          setNewSetlistName={setNewSetlistName}
+          setSelectedSetlistId={setSelectedSetlistId}
+          setlistError={setlistError}
+          setlists={setlists}
+          setlistsSectionRef={setlistsSectionRef}
+          songSetlistIds={songSetlistIds}
+        />
       </div>
 
     </div>

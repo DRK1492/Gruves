@@ -1,47 +1,30 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { supabase } from '../../lib/supabaseClient'
+import { useSupabaseSession } from './SessionProvider'
 
 const isPublicPath = (pathname: string) => pathname === '/' || pathname.startsWith('/auth')
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
-  const [checking, setChecking] = useState(true)
+  const { loading, session } = useSupabaseSession()
+  const isPublic = isPublicPath(pathname)
+  const shouldRedirectToHome = !session && !isPublic
+  const shouldRedirectAwayFromAuth = Boolean(session) && pathname.startsWith('/auth')
 
   useEffect(() => {
-    let mounted = true
+    if (loading) return
 
-    const checkAuth = async () => {
-      const { data } = await supabase.auth.getSession()
-      if (!mounted) return
-      const session = data.session
-      const isPublic = isPublicPath(pathname)
-
-      if (!session && !isPublic) {
-        router.replace('/')
-      } else if (session && pathname.startsWith('/auth')) {
-        router.replace('/')
-      }
-
-      setChecking(false)
+    if (shouldRedirectToHome) {
+      router.replace('/')
+    } else if (shouldRedirectAwayFromAuth) {
+      router.replace('/')
     }
+  }, [loading, router, shouldRedirectAwayFromAuth, shouldRedirectToHome])
 
-    checkAuth()
-
-    const { data: listener } = supabase.auth.onAuthStateChange(() => {
-      checkAuth()
-    })
-
-    return () => {
-      mounted = false
-      listener.subscription.unsubscribe()
-    }
-  }, [pathname, router])
-
-  if (checking) return null
+  if (loading || shouldRedirectToHome || shouldRedirectAwayFromAuth) return null
 
   return <>{children}</>
 }
