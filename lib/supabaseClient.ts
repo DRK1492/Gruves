@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -9,4 +9,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
 	)
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// createBrowserClient stores the session in cookies (not localStorage),
+// so the middleware can read it server-side via request.cookies.
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)

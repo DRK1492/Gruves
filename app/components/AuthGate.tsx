@@ -18,7 +18,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     if (loading) return
 
     if (shouldRedirectToHome) {
-      router.replace('/')
+      router.replace('/auth')
     } else if (shouldRedirectAwayFromAuth) {
       router.replace('/')
     }
