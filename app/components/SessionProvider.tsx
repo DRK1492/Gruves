@@ -18,6 +18,17 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let isMounted = true
 
+    // Clear any stale tokens left in localStorage from the old createClient setup.
+    // createBrowserClient (@supabase/ssr) uses cookies, not localStorage, so these
+    // leftovers can cause "Refresh Token Not Found" errors — especially on Safari.
+    if (typeof window !== 'undefined') {
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+          localStorage.removeItem(key)
+        }
+      })
+    }
+
     const loadSession = async () => {
       const { data } = await supabase.auth.getSession()
       if (!isMounted) return
