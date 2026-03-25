@@ -72,72 +72,150 @@ export default function Home() {
 
   if (!session) {
     return (
-      <div className="page flex items-center justify-center min-h-screen">
-        <main className="card p-8 w-full max-w-3xl text-center">
-          <div className="mx-auto max-w-lg">
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Stop guessing what you know.
-          </h1>
-          <div className="mx-auto max-w-xl mt-4">
-            <p className="muted leading-relaxed">
-              Gruves is a music brain you can actually use — keep your repertoire organized and
-              your practice performance-ready.
-            </p>
-          </div>
-          <div className="mx-auto max-w-2xl mt-5 pt-4 border-t border-[var(--border)] text-left">
-            <p className="label mb-3">What you get</p>
-            <ul className="muted space-y-3">
-                <li className="flex items-start gap-2 text-sm md:whitespace-nowrap">
-                  <svg viewBox="0 0 24 24" className="icon mt-0.5" aria-hidden="true">
-                    <path
-                      d="M5 12l4 4 10-10"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                </svg>
-                <span>One song = one home for notes, links, PDFs, and recordings</span>
-              </li>
-              <li className="flex items-start gap-2 text-sm md:whitespace-nowrap">
-                <svg viewBox="0 0 24 24" className="icon mt-0.5" aria-hidden="true">
-                    <path
-                      d="M5 12l4 4 10-10"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                </svg>
-                <span>A board that keeps you honest: Confident • Learning • Wishlist</span>
-              </li>
-              <li className="flex items-start gap-2 text-sm md:whitespace-nowrap">
-                <svg viewBox="0 0 24 24" className="icon mt-0.5" aria-hidden="true">
-                    <path
-                      d="M5 12l4 4 10-10"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                </svg>
-                <span>Setlists built in minutes for rehearsal or gigs</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-        <div className="flex items-center justify-center gap-3 mt-7">
-          <a className="button-primary w-40 text-center" href="/auth?mode=signup">
-            Create account
-          </a>
-          <a className="button-ghost w-40 text-center" href="/auth?mode=signin">
+      <div
+        className="relative flex flex-col min-h-screen overflow-hidden"
+      >
+        {/* Top nav */}
+        <nav className="relative z-10 flex items-center justify-between px-8 pt-8 pb-4">
+          <span
+            className="font-bold tracking-tight select-none"
+            style={{
+              fontFamily: 'var(--font-heading)',
+              fontSize: '1.6rem',
+              color: 'var(--accent)',
+              letterSpacing: '-0.02em',
+            }}
+          >
+            Gruves
+          </span>
+          <a
+            href="/auth?mode=signin"
+            className="text-sm font-medium transition-colors"
+            style={{ color: 'var(--text-muted)' }}
+          >
             Sign in
           </a>
-        </div>
-      </main>
+        </nav>
+
+        {/* Hero */}
+        <main className="relative z-10 flex flex-col items-center justify-center flex-1 px-6 text-center" style={{ paddingBottom: '6rem' }}>
+          <h1
+            className="font-bold tracking-tight leading-none mb-6"
+            style={{
+              fontFamily: 'var(--font-heading)',
+              fontSize: 'clamp(3rem, 8vw, 4.5rem)',
+              color: '#fff',
+              letterSpacing: '-0.03em',
+              maxWidth: '820px',
+            }}
+          >
+            Stop guessing<br />what you know.
+          </h1>
+
+          <p
+            className="mb-12 leading-relaxed"
+            style={{
+              color: 'var(--text-muted)',
+              fontSize: '1.125rem',
+              maxWidth: '480px',
+            }}
+          >
+            Gruves is a music brain you can actually use — keep your repertoire organized and your practice performance-ready.
+          </p>
+
+          {/* Feature cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-14 w-full" style={{ maxWidth: '820px' }}>
+            {/* Card 1 — Practice Board */}
+            <div
+              className="card flex flex-col items-start gap-3 p-6 text-left"
+            >
+              <div
+                className="flex items-center justify-center rounded-lg"
+                style={{ width: '40px', height: '40px', background: 'rgba(245,185,66,0.12)' }}
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="3" y="3" width="7" height="7" rx="1" />
+                  <rect x="14" y="3" width="7" height="7" rx="1" />
+                  <rect x="3" y="14" width="7" height="7" rx="1" />
+                  <rect x="14" y="14" width="7" height="7" rx="1" />
+                </svg>
+              </div>
+              <p className="font-semibold text-sm" style={{ color: '#fff' }}>Practice Board</p>
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                A board that keeps you honest: Confident · Learning · Wishlist
+              </p>
+            </div>
+
+            {/* Card 2 — Your Song Library */}
+            <div
+              className="card flex flex-col items-start gap-3 p-6 text-left"
+            >
+              <div
+                className="flex items-center justify-center rounded-lg"
+                style={{ width: '40px', height: '40px', background: 'rgba(245,185,66,0.12)' }}
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M9 18V5l12-2v13" />
+                  <circle cx="6" cy="18" r="3" />
+                  <circle cx="18" cy="16" r="3" />
+                </svg>
+              </div>
+              <p className="font-semibold text-sm" style={{ color: '#fff' }}>Your Song Library</p>
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                One song = one home for notes, links, PDFs, and recordings
+              </p>
+            </div>
+
+            {/* Card 3 — Setlists */}
+            <div
+              className="card flex flex-col items-start gap-3 p-6 text-left"
+            >
+              <div
+                className="flex items-center justify-center rounded-lg"
+                style={{ width: '40px', height: '40px', background: 'rgba(245,185,66,0.12)' }}
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="8" y1="6" x2="21" y2="6" />
+                  <line x1="8" y1="12" x2="21" y2="12" />
+                  <line x1="8" y1="18" x2="21" y2="18" />
+                  <circle cx="3" cy="6" r="1" fill="var(--accent)" stroke="none" />
+                  <circle cx="3" cy="12" r="1" fill="var(--accent)" stroke="none" />
+                  <circle cx="3" cy="18" r="1" fill="var(--accent)" stroke="none" />
+                </svg>
+              </div>
+              <p className="font-semibold text-sm" style={{ color: '#fff' }}>Setlists</p>
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                Setlists built in minutes for rehearsal or gigs
+              </p>
+            </div>
+          </div>
+
+          {/* CTA */}
+          <div className="flex flex-col items-center gap-4">
+            <a
+              href="/auth?mode=signup"
+              className="inline-flex items-center justify-center font-bold rounded-full transition-all"
+              style={{
+                background: 'var(--accent)',
+                color: '#0b0e11',
+                fontSize: '1rem',
+                padding: '0.875rem 3rem',
+                letterSpacing: '0.01em',
+                boxShadow: '0 0 32px rgba(245,185,66,0.25)',
+              }}
+            >
+              Create account
+            </a>
+            <a
+              href="/auth?mode=signin"
+              className="text-sm transition-colors"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              Already have an account?{' '}
+              <span style={{ color: 'var(--accent)' }}>Sign in</span>
+            </a>
+          </div>
+        </main>
       </div>
     )
   }
