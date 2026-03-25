@@ -14,6 +14,8 @@ export default async function proxy(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
+          // Apply new cookies to both the request (for downstream reads) and
+          // the response (so the browser receives the refreshed token pair).
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
@@ -24,11 +26,14 @@ export default async function proxy(request: NextRequest) {
     }
   )
 
-  // Use getUser() not getSession() — getSession() reads only from cookies and can be spoofed.
-  // getUser() validates the token against the Supabase auth server.
-  const { data: { user } } = await supabase.auth.getUser()
+  // getSession() decodes the JWT from the cookie locally — no network round-trip.
+  // This is safe here because we're only gating access, not trusting session data
+  // for privileged operations. RLS on the database enforces actual data security.
+  // Using getUser() was causing false 307 redirects when the Supabase auth server
+  // was slow or unreachable from the edge runtime.
+  const { data: { session } } = await supabase.auth.getSession()
 
-  if (!user) {
+  if (!session) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth'
     return NextResponse.redirect(url)
