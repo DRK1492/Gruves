@@ -454,9 +454,7 @@ export default function SongDetailPage() {
 
   // ---------- Notes ----------
   const handleAddNote = async () => {
-    const temp = document.createElement('div')
-    temp.innerHTML = newNote
-    if (!temp.textContent?.trim() || !session?.user?.id) {
+    if (!newNote.replace(/<[^>]*>/g, '').trim() || !session?.user?.id) {
       addToast({ title: 'Note is empty', description: 'Add some text before saving.', variant: 'error' })
       return
     }
@@ -475,7 +473,7 @@ export default function SongDetailPage() {
       .single()
 
     if (error) {
-      console.error('Error adding note:', error)
+      if (process.env.NODE_ENV === 'development') console.error('Error adding note:', error)
       addToast({ title: 'Could not save note', description: 'Please try again.', variant: 'error' })
       return
     }
@@ -492,7 +490,7 @@ export default function SongDetailPage() {
   const handleDeleteNote = async (noteId: string) => {
     const { error } = await supabase.from('song_notes').delete().eq('id', noteId)
     if (error) {
-      console.error('Error deleting note:', error)
+      if (process.env.NODE_ENV === 'development') console.error('Error deleting note:', error)
       addToast({ title: 'Could not delete note', description: 'Please try again.', variant: 'error' })
       return
     }
@@ -509,9 +507,7 @@ export default function SongDetailPage() {
   }
 
   const handleUpdateNote = async () => {
-    const temp = document.createElement('div')
-    temp.innerHTML = editingNoteContent
-    if (!editingNoteId || !temp.textContent?.trim() || !session?.user?.id) {
+    if (!editingNoteId || !editingNoteContent.replace(/<[^>]*>/g, '').trim() || !session?.user?.id) {
       addToast({ title: 'Note is empty', description: 'Add some text before saving.', variant: 'error' })
       return
     }
@@ -529,7 +525,7 @@ export default function SongDetailPage() {
       .select()
       .single()
     if (error) {
-      console.error('Error updating note:', error)
+      if (process.env.NODE_ENV === 'development') console.error('Error updating note:', error)
       addToast({ title: 'Could not update note', description: 'Please try again.', variant: 'error' })
       return
     }
@@ -570,7 +566,7 @@ export default function SongDetailPage() {
       .single()
 
     if (error) {
-      console.error('Error adding link:', error)
+      if (process.env.NODE_ENV === 'development') console.error('Error adding link:', error)
       addToast({ title: 'Could not add link', description: 'Please try again.', variant: 'error' })
       return
     }
@@ -585,7 +581,7 @@ export default function SongDetailPage() {
   const handleDeleteLink = async (linkId: string) => {
     const { error } = await supabase.from('song_links').delete().eq('id', linkId)
     if (error) {
-      console.error('Error deleting link:', error)
+      if (process.env.NODE_ENV === 'development') console.error('Error deleting link:', error)
       addToast({ title: 'Could not delete link', description: 'Please try again.', variant: 'error' })
       return
     }
@@ -628,7 +624,7 @@ export default function SongDetailPage() {
       .eq('id', editingLinkId)
       .eq('user_id', session.user.id)
     if (error) {
-      console.error('Error updating link:', error)
+      if (process.env.NODE_ENV === 'development') console.error('Error updating link:', error)
       setLinkError('Unable to update link. Please try again.')
       addToast({ title: 'Could not update link', description: 'Please try again.', variant: 'error' })
       return
@@ -724,7 +720,7 @@ export default function SongDetailPage() {
       .single()
 
     if (error || !data) {
-      console.error('Error saving practice loop:', error)
+      if (process.env.NODE_ENV === 'development') console.error('Error saving practice loop:', error)
       throw new Error(error?.message || 'Could not save this loop.')
     }
 
@@ -744,7 +740,7 @@ export default function SongDetailPage() {
       .eq('user_id', session.user.id)
 
     if (error) {
-      console.error('Error deleting practice loop:', error)
+      if (process.env.NODE_ENV === 'development') console.error('Error deleting practice loop:', error)
       throw new Error(error.message || 'Could not delete this loop.')
     }
 
@@ -761,7 +757,7 @@ export default function SongDetailPage() {
     if (!storagePath) return null
     const { data, error } = await supabase.storage.from('song-pdfs').createSignedUrl(storagePath, 60 * 60)
     if (error) {
-      console.error('Error creating signed URL:', error)
+      if (process.env.NODE_ENV === 'development') console.error('Error creating signed URL:', error)
       return null
     }
     return data?.signedUrl ?? null
@@ -796,7 +792,7 @@ export default function SongDetailPage() {
       return
     }
     if (!session?.user?.id) {
-      console.error('Session not loaded or user ID missing')
+      if (process.env.NODE_ENV === 'development') console.error('Session not loaded or user ID missing')
       addToast({ title: 'Not signed in', description: 'Please sign in again.', variant: 'error' })
       return
     }
@@ -847,7 +843,7 @@ export default function SongDetailPage() {
       await uploadWithProgress()
       setUploadProgress(100)
     } catch (err) {
-      console.error('Storage upload error:', err)
+      if (process.env.NODE_ENV === 'development') console.error('Storage upload error:', err)
       setUploading(false)
       setUploadProgress(0)
       addToast({ title: 'Upload failed', description: 'Please try again.', variant: 'error' })
@@ -868,7 +864,7 @@ export default function SongDetailPage() {
       .single()
 
     if (dbError) {
-      console.error('DB insert error (RLS):', dbError)
+      if (process.env.NODE_ENV === 'development') console.error('DB insert error (RLS):', dbError)
       setUploading(false)
       setUploadProgress(0)
       addToast({ title: 'Upload saved, but DB failed', description: 'Please retry.', variant: 'error' })
@@ -887,7 +883,7 @@ export default function SongDetailPage() {
     try {
       const file = pdfFiles.find(f => f.id === fileId)
       if (!file) {
-        console.error('File not found for deletion:', fileId)
+        if (process.env.NODE_ENV === 'development') console.error('File not found for deletion:', fileId)
         addToast({ title: 'PDF not found', description: 'Please refresh and try again.', variant: 'error' })
         return
       }
@@ -899,12 +895,12 @@ export default function SongDetailPage() {
       const storagePath = getStoragePathFromFile(file)
 
       if (!storagePath) {
-        console.error('Could not determine storage path for deletion:', file)
+        if (process.env.NODE_ENV === 'development') console.error('Could not determine storage path for deletion:', file)
         addToast({ title: 'Could not delete PDF', description: 'Missing storage path.', variant: 'error' })
       } else {
         const { error: storageError } = await supabase.storage.from('song-pdfs').remove([storagePath])
         if (storageError) {
-          console.error('Error deleting storage file:', storageError)
+          if (process.env.NODE_ENV === 'development') console.error('Error deleting storage file:', storageError)
           addToast({ title: 'Could not delete PDF', description: 'Storage delete failed.', variant: 'error' })
           return
         }
@@ -912,14 +908,14 @@ export default function SongDetailPage() {
 
       const { error: dbError } = await supabase.from('song_files').delete().eq('id', fileId)
       if (dbError) {
-        console.error('Error deleting PDF record:', dbError)
+        if (process.env.NODE_ENV === 'development') console.error('Error deleting PDF record:', dbError)
         addToast({ title: 'Could not delete PDF', description: 'Database delete failed.', variant: 'error' })
         return
       }
       setPdfFiles(prev => prev.filter(f => f.id !== fileId))
       addToast({ title: 'PDF deleted', variant: 'success' })
     } catch (err) {
-      console.error('Error deleting PDF:', err)
+      if (process.env.NODE_ENV === 'development') console.error('Error deleting PDF:', err)
       addToast({ title: 'Could not delete PDF', description: 'Please try again.', variant: 'error' })
     }
   }
@@ -970,7 +966,7 @@ export default function SongDetailPage() {
       .eq('id', editingPdfId)
       .eq('user_id', session.user.id)
     if (error) {
-      console.error('Error renaming PDF:', error)
+      if (process.env.NODE_ENV === 'development') console.error('Error renaming PDF:', error)
       setPdfError('Unable to update PDF name. Please try again.')
       addToast({ title: 'Could not rename PDF', description: 'Please try again.', variant: 'error' })
       return
@@ -1000,7 +996,7 @@ export default function SongDetailPage() {
     if (!storagePath) return null
     const { data, error } = await supabase.storage.from('song-audio').createSignedUrl(storagePath, 60 * 60)
     if (error) {
-      console.error('Error creating signed audio URL:', error)
+      if (process.env.NODE_ENV === 'development') console.error('Error creating signed audio URL:', error)
       return null
     }
     return data?.signedUrl ?? null
@@ -1041,7 +1037,7 @@ export default function SongDetailPage() {
       setRecording(true)
       setRecordingAudioBlob(null)
     } catch (error) {
-      console.error('Recording failed to start:', error)
+      if (process.env.NODE_ENV === 'development') console.error('Recording failed to start:', error)
       setAudioError('Microphone access denied or unavailable.')
     }
   }
@@ -1073,7 +1069,7 @@ export default function SongDetailPage() {
     })
 
     if (storageError) {
-      console.error('Audio upload error:', storageError)
+      if (process.env.NODE_ENV === 'development') console.error('Audio upload error:', storageError)
       setAudioUploading(false)
       addToast({ title: 'Upload failed', description: 'Please try again.', variant: 'error' })
       return
@@ -1092,7 +1088,7 @@ export default function SongDetailPage() {
       .single()
 
     if (dbError) {
-      console.error('Audio DB insert error:', dbError)
+      if (process.env.NODE_ENV === 'development') console.error('Audio DB insert error:', dbError)
       setAudioUploading(false)
       addToast({ title: 'Upload saved, but DB failed', description: 'Please retry.', variant: 'error' })
       return
@@ -1129,7 +1125,7 @@ export default function SongDetailPage() {
     if (storagePath) {
       const { error: storageError } = await supabase.storage.from('song-audio').remove([storagePath])
       if (storageError) {
-        console.error('Error deleting audio file:', storageError)
+        if (process.env.NODE_ENV === 'development') console.error('Error deleting audio file:', storageError)
         addToast({ title: 'Could not delete recording', description: 'Storage delete failed.', variant: 'error' })
         return
       }
@@ -1137,7 +1133,7 @@ export default function SongDetailPage() {
 
     const { error: dbError } = await supabase.from('song_recordings').delete().eq('id', recordingId)
     if (dbError) {
-      console.error('Error deleting recording record:', dbError)
+      if (process.env.NODE_ENV === 'development') console.error('Error deleting recording record:', dbError)
       addToast({ title: 'Could not delete recording', description: 'Database delete failed.', variant: 'error' })
       return
     }
@@ -1167,7 +1163,7 @@ export default function SongDetailPage() {
       .eq('id', editingRecordingId)
       .eq('user_id', session.user.id)
     if (error) {
-      console.error('Error renaming recording:', error)
+      if (process.env.NODE_ENV === 'development') console.error('Error renaming recording:', error)
       addToast({ title: 'Could not rename recording', description: 'Please try again.', variant: 'error' })
       return
     }
@@ -1209,7 +1205,7 @@ export default function SongDetailPage() {
         position: nextPosition
       })
     if (error) {
-      console.error('Error adding to setlist:', error)
+      if (process.env.NODE_ENV === 'development') console.error('Error adding to setlist:', error)
       addToast({ title: 'Could not add to setlist', description: 'Please try again.', variant: 'error' })
       return
     }
@@ -1229,7 +1225,7 @@ export default function SongDetailPage() {
       .select()
       .single()
     if (error) {
-      console.error('Error adding setlist:', error)
+      if (process.env.NODE_ENV === 'development') console.error('Error adding setlist:', error)
       setSetlistError('Could not add setlist. Try a different name.')
       addToast({ title: 'Could not create setlist', description: 'Please try again.', variant: 'error' })
       return
@@ -1254,7 +1250,7 @@ export default function SongDetailPage() {
       .eq('song_id', song.id)
       .eq('user_id', session.user.id)
 
-    if (filesError) console.error('Error fetching files for deletion:', filesError)
+    if (filesError && process.env.NODE_ENV === 'development') console.error('Error fetching files for deletion:', filesError)
 
     if (files && files.length > 0) {
       const paths = files
@@ -1262,7 +1258,7 @@ export default function SongDetailPage() {
         .filter((path): path is string => Boolean(path))
       if (paths.length > 0) {
         const { error: storageError } = await supabase.storage.from('song-pdfs').remove(paths)
-        if (storageError) console.error('Error deleting storage files:', storageError)
+        if (storageError && process.env.NODE_ENV === 'development') console.error('Error deleting storage files:', storageError)
       }
     }
 
@@ -1272,7 +1268,7 @@ export default function SongDetailPage() {
       .eq('song_id', song.id)
       .eq('user_id', session.user.id)
 
-    if (audioFilesError) console.error('Error fetching recordings for deletion:', audioFilesError)
+    if (audioFilesError && process.env.NODE_ENV === 'development') console.error('Error fetching recordings for deletion:', audioFilesError)
 
     if (audioFiles && audioFiles.length > 0) {
       const paths = audioFiles
@@ -1280,7 +1276,7 @@ export default function SongDetailPage() {
         .filter((path): path is string => Boolean(path))
       if (paths.length > 0) {
         const { error: storageError } = await supabase.storage.from('song-audio').remove(paths)
-        if (storageError) console.error('Error deleting recording files:', storageError)
+        if (storageError && process.env.NODE_ENV === 'development') console.error('Error deleting recording files:', storageError)
       }
     }
 
@@ -1291,7 +1287,7 @@ export default function SongDetailPage() {
       .eq('user_id', session.user.id)
 
     if (error) {
-      console.error('Error deleting song:', error)
+      if (process.env.NODE_ENV === 'development') console.error('Error deleting song:', error)
       addToast({ title: 'Could not delete song', description: 'Please try again.', variant: 'error' })
       return
     }
@@ -1318,7 +1314,7 @@ export default function SongDetailPage() {
       .select()
       .single()
     if (error) {
-      console.error('Error adding genre:', error)
+      if (process.env.NODE_ENV === 'development') console.error('Error adding genre:', error)
       setGenreError('Could not add genre. Try a different name.')
       addToast({ title: 'Could not add genre', description: 'Please try again.', variant: 'error' })
       return
@@ -1374,7 +1370,7 @@ export default function SongDetailPage() {
       .eq('user_id', session.user.id)
 
     if (updateError) {
-      console.error('Error updating song:', updateError)
+      if (process.env.NODE_ENV === 'development') console.error('Error updating song:', updateError)
       setSaveError('Could not save changes. Please try again.')
       setSavingSong(false)
       addToast({ title: 'Could not save song', description: 'Please try again.', variant: 'error' })
@@ -1388,7 +1384,7 @@ export default function SongDetailPage() {
       .eq('user_id', session.user.id)
 
     if (deleteError) {
-      console.error('Error clearing song genres:', deleteError)
+      if (process.env.NODE_ENV === 'development') console.error('Error clearing song genres:', deleteError)
       setSaveError('Song saved, but genres failed to update.')
       setSavingSong(false)
       addToast({ title: 'Genres not updated', description: 'Please try again.', variant: 'error' })
@@ -1404,7 +1400,7 @@ export default function SongDetailPage() {
         }))
       )
       if (insertError) {
-        console.error('Error saving song genres:', insertError)
+        if (process.env.NODE_ENV === 'development') console.error('Error saving song genres:', insertError)
         setSaveError('Song saved, but genres failed to update.')
         setSavingSong(false)
         addToast({ title: 'Genres not updated', description: 'Please try again.', variant: 'error' })

@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
+import DOMPurify from 'dompurify'
 
 type NoteBlock =
   | { type: 'paragraph'; text: string }
@@ -13,36 +14,13 @@ type NoteListItem = {
 
 const listItemRegex = /^(\s*)([-*])\s+(.*)$/
 const htmlRegex = /<\/?[a-z][\s\S]*>/i
-const allowedTags = new Set(['P', 'BR', 'UL', 'OL', 'LI', 'STRONG', 'EM', 'B', 'I', 'U'])
 
-const sanitizeHtml = (html: string) => {
-  if (typeof window === 'undefined') return html
-  const parser = new DOMParser()
-  const doc = parser.parseFromString(html, 'text/html')
-  const container = document.createElement('div')
-
-  const sanitizeNode = (node: Node, parent: HTMLElement) => {
-    if (node.nodeType === Node.TEXT_NODE) {
-      parent.appendChild(document.createTextNode(node.textContent || ''))
-      return
-    }
-
-    if (node.nodeType !== Node.ELEMENT_NODE) return
-    const element = node as HTMLElement
-    const tagName = element.tagName.toUpperCase()
-
-    if (!allowedTags.has(tagName)) {
-      Array.from(element.childNodes).forEach(child => sanitizeNode(child, parent))
-      return
-    }
-
-    const safeEl = document.createElement(tagName.toLowerCase())
-    parent.appendChild(safeEl)
-    Array.from(element.childNodes).forEach(child => sanitizeNode(child, safeEl))
-  }
-
-  Array.from(doc.body.childNodes).forEach(child => sanitizeNode(child, container))
-  return container.innerHTML
+const sanitizeHtml = (html: string): string => {
+  if (typeof window === 'undefined') return ''
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['p', 'br', 'ul', 'ol', 'li', 'strong', 'em', 'b', 'i', 'u'],
+    ALLOWED_ATTR: [],
+  })
 }
 
 const parseList = (lines: string[], startIndex: number) => {
