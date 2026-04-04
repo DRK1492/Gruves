@@ -11,6 +11,7 @@ export default function AuthPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const { session } = useSupabaseSession()
   const initialMode = useMemo(() => {
     const modeParam = searchParams.get('mode')
@@ -34,7 +35,7 @@ export default function AuthPage() {
         }
       })
       if (error) {
-        setMessage(`Error: ${error.message}`)
+        setMessage("Couldn't create account. Please try again.")
       } else if (data.user) {
         setMessage('✅ Account created. You can now sign in.')
         setMode('signin')
@@ -46,18 +47,30 @@ export default function AuthPage() {
       password
     })
     if (error) {
-      setMessage(`Error: ${error.message}`)
+      setMessage('Incorrect email or password. Please try again.')
     } else {
       setMessage(`✅ Logged in as ${data.user?.email ?? email}`)
       router.push('/')
     }
   }
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setMessage('Enter your email above first.')
+      return
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim())
+    if (error) {
+      setMessage('⚠️ Could not send reset email. Please try again.')
+    } else {
+      setMessage('✅ Password reset email sent. Check your inbox.')
+    }
+  }
   return (
     <div className="page">
       <div className="card p-6 max-w-md mx-auto">
-        <p className="label mb-2">Access</p>
         <h1 className="text-2xl font-semibold tracking-tight mb-4">
-          {mode === 'signup' ? 'Create account' : 'Sign in'}
+          {mode === 'signup' ? 'Create your account' : 'Welcome back'}
         </h1>
       {!session ? (
         <form onSubmit={handleSubmit}>
@@ -69,15 +82,35 @@ export default function AuthPage() {
             required
             className="input w-full mb-4"
           />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            required
-            className="input w-full mb-4"
-          />
-          <button type="submit" className="button-primary">
+          <div className="relative mb-4">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+              className="input w-full"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted hover:text-foreground transition"
+            >
+              {showPassword ? 'Hide' : 'Show'}
+            </button>
+          </div>
+          {mode === 'signin' && (
+            <div className="text-right mb-4">
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                className="text-sm text-muted hover:text-foreground transition"
+              >
+                Forgot password?
+              </button>
+            </div>
+          )}
+          <button type="submit" className="button-primary w-full">
             {mode === 'signup' ? 'Create account' : 'Sign in'}
           </button>
           <button
@@ -97,7 +130,16 @@ export default function AuthPage() {
           <p className="muted mt-2">You can now navigate to your songs page.</p>
         </div>
       )}
-      {message && <p className="mt-4">{message}</p>}
+      {message && (
+        <p className={`mt-4 text-sm ${
+          message.startsWith('✅')
+            ? 'text-green-400'
+            : 'text-red-400'
+        }`}>
+          {!message.startsWith('✅') && <span>⚠️ </span>}
+          {message}
+        </p>
+      )}
       </div>
     </div>
   )

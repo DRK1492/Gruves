@@ -29,8 +29,10 @@ export default function AuthCallbackPage() {
   return (
     <div className="page">
       <div className="card p-6 max-w-md mx-auto text-center">
-        <p className="label mb-2">Auth</p>
-        <p>Finishing sign in...</p>
+        <div className="flex justify-center mb-4">
+          <div className="w-8 h-8 border-2 border-muted border-t-foreground rounded-full animate-spin"></div>
+        </div>
+        <p className="text-muted">Signing you in…</p>
       </div>
     </div>
   )
