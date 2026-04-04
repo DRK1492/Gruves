@@ -132,22 +132,48 @@ export default function SongCard({
     </article>
 
     {showDemoPopup && onDismissDemo && (
-      <div className="absolute -top-20 left-1/2 -translate-x-1/2 z-50">
-        {/* Arrow pointing down to the card */}
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full w-2 h-2 bg-card rotate-45"></div>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="card p-8 max-w-md border border-accent/20">
+          <div className="mb-6">
+            <p className="text-xs font-semibold tracking-wide text-accent uppercase mb-2">Welcome</p>
+            <h2 className="text-2xl font-bold tracking-tight">Explore Gruves</h2>
+          </div>
 
-        <div className="card p-3 mb-2 w-max">
-          <p className="text-xs font-semibold mb-2">This is a demo song</p>
-          <p className="text-xs muted mb-3 max-w-xs">
-            Explore all features, then add your own or delete this one.
+          <p className="text-sm leading-relaxed muted mb-6">
+            We've created a demo song for you: <span className="text-foreground font-medium italic">Wish You Were Here</span> by Pink Floyd. Use it to discover everything Gruves offers:
           </p>
-          <button
-            type="button"
-            onClick={onDismissDemo}
-            className="text-xs button-primary w-full"
-          >
-            Got it
-          </button>
+
+          <ul className="text-sm muted space-y-2 mb-6">
+            <li className="flex gap-2">
+              <span className="text-accent flex-shrink-0">→</span>
+              <span>Practice loops with A/B point markers</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-accent flex-shrink-0">→</span>
+              <span>Linked YouTube videos & resources</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-accent flex-shrink-0">→</span>
+              <span>Notes and practice tips</span>
+            </li>
+          </ul>
+
+          <div className="flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={onDismissDemo}
+              className="button-primary"
+            >
+              View Demo Song
+            </button>
+            <button
+              type="button"
+              onClick={onDismissDemo}
+              className="button-ghost text-sm"
+            >
+              Skip for now
+            </button>
+          </div>
         </div>
       </div>
     )}
