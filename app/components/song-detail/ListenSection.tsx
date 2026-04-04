@@ -24,6 +24,17 @@ type Note = {
 
 type ViewMode = 'table' | 'grid' | 'tabs'
 
+type SongLoopRecord = {
+  id: string
+  song_id: string
+  link_id: string
+  user_id: string
+  name: string
+  loop_start: number
+  loop_end: number
+  created_at: string
+}
+
 type ListenSectionProps = {
   editingLinkId: string | null
   editingLinkTitle: string
@@ -52,6 +63,7 @@ type ListenSectionProps = {
   previewYoutubeTitle: string
   previewYoutubeUrl: string | null
   savedLoopsForPreviewLink: PracticeLoop[]
+  savedLoops: SongLoopRecord[]
   scrollMarginTop: number
   sectionNavId: string
   sessionUserId: string | null | undefined
@@ -95,6 +107,7 @@ export default function ListenSection({
   previewYoutubeTitle,
   previewYoutubeUrl,
   savedLoopsForPreviewLink,
+  savedLoops,
   scrollMarginTop,
   sectionNavId,
   sessionUserId,
@@ -110,6 +123,32 @@ export default function ListenSection({
   isDemo,
 }: ListenSectionProps) {
   const [showDemoModal, setShowDemoModal] = useState(isDemo && links.length > 0)
+
+  const handleShowMeClick = async () => {
+    setShowDemoModal(false)
+    if (links.length > 0) {
+      // Check if the first link has any loops
+      const firstLink = links[0]
+      const firstLinkLoops = savedLoops.filter(loop => loop.link_id === firstLink.id)
+
+      // If no loops exist and this is a demo, create the default loop
+      if (isDemo && firstLinkLoops.length === 0 && sessionUserId) {
+        try {
+          await handleSavePracticeLoop({
+            name: 'Guitar riff after the intro',
+            loopStart: 41,
+            loopEnd: 49,
+          })
+        } catch (err) {
+          if (process.env.NODE_ENV === 'development') {
+            console.log('Demo loop creation handled')
+          }
+        }
+      }
+
+      handleLinkRowClick(firstLink)
+    }
+  }
   return (
     <div
       id="section-listen"
@@ -185,12 +224,7 @@ export default function ListenSection({
             <div className="flex flex-col gap-3">
               <button
                 type="button"
-                onClick={() => {
-                  setShowDemoModal(false)
-                  if (links.length > 0) {
-                    handleLinkRowClick(links[0])
-                  }
-                }}
+                onClick={handleShowMeClick}
                 className="button-primary"
               >
                 Show me

@@ -1679,6 +1679,7 @@ export default function SongDetailPage() {
           previewYoutubeTitle={previewYoutubeTitle}
           previewYoutubeUrl={previewYoutubeUrl}
           savedLoopsForPreviewLink={savedLoopsForPreviewLink}
+          savedLoops={savedLoops}
           scrollMarginTop={sectionScrollOffset}
           sectionNavId="section-listen"
           sessionUserId={session?.user?.id}
