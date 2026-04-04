@@ -43,14 +43,8 @@ export default function SongsContent({
       <div className="card p-6 text-center">
         <h2 className="text-xl font-semibold">Start by adding your first song</h2>
         <p className="muted mt-2">
-          Try something like “Wish You Were Here” — Pink Floyd.
+          Click to add a song, or a demo song will appear shortly if this is your first time.
         </p>
-        <div className="mt-4 mx-auto max-w-sm border border-dashed border-[var(--border)] rounded-lg p-4 text-left">
-          <p className="label mb-2">Sample</p>
-          <p className="font-semibold">Wish You Were Here</p>
-          <p className="muted">Pink Floyd</p>
-          <span className="badge mt-2">Learning</span>
-        </div>
       </div>
     )
   }

@@ -31,13 +31,6 @@ export default function AuthCallbackPage() {
         return
       }
 
-      // Attempt to seed demo song for new users (best-effort, non-blocking)
-      try {
-        await fetch('/api/seed-demo', { method: 'POST' })
-      } catch (error) {
-        console.error('Demo seed failed:', error)
-      }
-
       router.replace('/')
     }
 

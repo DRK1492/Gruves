@@ -11,6 +11,7 @@ import SongsToolbar from '../components/songs-page/SongsToolbar'
 import type { Genre, Setlist, Song, SongGenre, SongsViewMode } from '../components/songs-page/types'
 import UndoDeleteToast from '../components/songs-page/UndoDeleteToast'
 import { useSupabaseSession } from '../components/SessionProvider'
+import { seedDemoSong } from '../actions/seed'
 
 export default function SongsPage() {
   const router = useRouter()
@@ -71,6 +72,14 @@ export default function SongsPage() {
     }
     fetchSongs()
   }, [session])
+
+  // Seed demo song for new users on first load
+  useEffect(() => {
+    if (session && songs.length === 0 && !loading) {
+      console.log('[PAGE] Seeding demo for new user...')
+      void seedDemoSong(session.user.id)
+    }
+  }, [session, songs.length, loading])
 
   useEffect(() => {
     const fetchGenres = async () => {
