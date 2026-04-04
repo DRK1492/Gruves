@@ -142,10 +142,10 @@ export function useYouTubeLoop({
     setLoopEnabled(false)
   }
 
-  const loadLoop = (nextLoopStart: number, nextLoopEnd: number) => {
+  const loadLoop = (nextLoopStart: number, nextLoopEnd: number, autoEnable = false) => {
     setLoopStart(nextLoopStart)
     setLoopEnd(nextLoopEnd)
-    setLoopEnabled(nextLoopStart < nextLoopEnd)
+    setLoopEnabled(autoEnable && nextLoopStart < nextLoopEnd)
     jumpToTime(nextLoopStart)
   }
 

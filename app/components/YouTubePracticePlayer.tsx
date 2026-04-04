@@ -107,7 +107,8 @@ function YouTubePracticePlayerInner({
     if (player && activeSavedLoopId && savedLoops.length > 0) {
       const activeLoop = savedLoops.find(loop => loop.id === activeSavedLoopId)
       if (activeLoop) {
-        loadLoop(activeLoop.loopStart, activeLoop.loopEnd)
+        // Load the loop markers but don't enable looping yet - let it play through first
+        loadLoop(activeLoop.loopStart, activeLoop.loopEnd, false)
       }
     }
   }, [player, activeSavedLoopId, savedLoops, loadLoop])
@@ -227,7 +228,7 @@ function YouTubePracticePlayerInner({
   }
 
   const handleLoadSavedLoop = (loop: PracticeLoop) => {
-    loadLoop(loop.loopStart, loop.loopEnd)
+    loadLoop(loop.loopStart, loop.loopEnd, true)
     setActiveSavedLoopId(loop.id)
     setSaveError('')
     setSavedLoopError('')
