@@ -161,7 +161,10 @@ export default function SongCard({
           <div className="flex flex-col gap-3">
             <button
               type="button"
-              onClick={onDismissDemo}
+              onClick={() => {
+                onGoToSong(song.id)
+                onDismissDemo()
+              }}
               className="button-primary"
             >
               View Demo Song

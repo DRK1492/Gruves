@@ -18,6 +18,7 @@ interface Song {
   title: string
   artist: string
   status: string
+  is_demo?: boolean
 }
 
 interface Note {
@@ -1679,7 +1680,7 @@ export default function SongDetailPage() {
           previewYoutubeUrl={previewYoutubeUrl}
           savedLoopsForPreviewLink={savedLoopsForPreviewLink}
           scrollMarginTop={sectionScrollOffset}
-          sectionNavId="listen"
+          sectionNavId="section-listen"
           sessionUserId={session?.user?.id}
           setActiveLinkTabId={setActiveLinkTabId}
           setEditingLinkTitle={setEditingLinkTitle}
@@ -1690,6 +1691,7 @@ export default function SongDetailPage() {
           setOpenLinkMenuId={setOpenLinkMenuId}
           skipLinkRowClickRef={skipLinkRowClickRef}
           youtubePreviewRef={youtubePreviewRef}
+          isDemo={song?.is_demo}
         />
 
         <ReadSection

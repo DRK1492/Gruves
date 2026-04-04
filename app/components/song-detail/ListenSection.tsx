@@ -63,6 +63,7 @@ type ListenSectionProps = {
   setOpenLinkMenuId: Dispatch<SetStateAction<string | null>>
   skipLinkRowClickRef: RefObject<boolean>
   youtubePreviewRef: RefObject<HTMLDivElement | null>
+  isDemo?: boolean
 }
 
 export default function ListenSection({
@@ -105,6 +106,7 @@ export default function ListenSection({
   setOpenLinkMenuId,
   skipLinkRowClickRef,
   youtubePreviewRef,
+  isDemo,
 }: ListenSectionProps) {
   return (
     <div
@@ -166,6 +168,11 @@ export default function ListenSection({
         </button>
       </div>
       {linkError && <p className="text-sm text-red-600 mb-3">{linkError}</p>}
+      {isDemo && links.length > 0 && (
+        <div className="mb-4 p-3 bg-accent/10 border border-accent/30 rounded text-sm muted">
+          💡 Try clicking on the YouTube link below to open the practice player with your saved loops!
+        </div>
+      )}
       {links.length === 0 ? (
         <p className="muted">No links yet.</p>
       ) : (
