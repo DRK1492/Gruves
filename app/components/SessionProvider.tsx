@@ -17,6 +17,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let isMounted = true
+    let unsubscribe: (() => void) | null = null
 
     // Clear any stale tokens left in localStorage from the old createClient setup.
     // createBrowserClient (@supabase/ssr) uses cookies, not localStorage, so these
@@ -29,23 +30,29 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       })
     }
 
-    const loadSession = async () => {
+    // Initialize session sequentially: load first, then subscribe.
+    // Registering onAuthStateChange before getSession() resolves creates a race
+    // where INITIAL_SESSION fires with null before the cookie-based session is
+    // read — causing AuthGate to fire a premature redirect to /auth and then back
+    // to / for authenticated users navigating to protected routes.
+    const initialize = async () => {
       const { data } = await supabase.auth.getSession()
       if (!isMounted) return
       setSession(data.session)
       setLoading(false)
+
+      if (!isMounted) return
+      const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+        if (isMounted) setSession(nextSession)
+      })
+      unsubscribe = () => listener.subscription.unsubscribe()
     }
 
-    loadSession()
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession)
-      setLoading(false)
-    })
+    void initialize()
 
     return () => {
       isMounted = false
-      listener.subscription.unsubscribe()
+      unsubscribe?.()
     }
   }, [])
 

@@ -26,8 +26,11 @@ export default async function middleware(request: NextRequest) {
     }
   )
 
-  // Try getUser() first for token refresh capability
-  // If it fails (network error, timeout, etc.), fall back to getSession()
+  // Try getUser() first for server-side JWT validation.
+  // If it returns an error OR throws/times out, fall back to getSession()
+  // (local cookie decode). This handles expired access tokens, network
+  // failures, and Supabase service outages without incorrectly blocking
+  // users who still have a valid refresh token.
   let user = null
   let error = null
 
@@ -41,10 +44,20 @@ export default async function middleware(request: NextRequest) {
 
     user = result.data?.user ?? null
     error = result.error
-    console.log('[MIDDLEWARE] getUser succeeded:', { userId: user?.id })
+    console.log('[MIDDLEWARE] getUser result:', { userId: user?.id, error: error?.message })
+
+    // getUser() returns {data: null, error: JWTExpired} for expired tokens —
+    // that's a normal return (not a throw), so the catch won't fire.
+    // Fall back to getSession() so users with valid refresh tokens aren't blocked.
+    if (!user || error) {
+      console.log('[MIDDLEWARE] getUser returned no user or error, falling back to getSession')
+      const sessionResult = await supabase.auth.getSession()
+      user = sessionResult.data?.session?.user ?? null
+      error = sessionResult.error
+      console.log('[MIDDLEWARE] getSession fallback:', { userId: user?.id, error: error?.message })
+    }
   } catch (e) {
-    console.log('[MIDDLEWARE] getUser failed, falling back to getSession:', (e as Error).message)
-    // Fallback to getSession for faster, local JWT decode
+    console.log('[MIDDLEWARE] getUser threw or timed out, falling back to getSession:', (e as Error).message)
     const sessionResult = await supabase.auth.getSession()
     user = sessionResult.data?.session?.user ?? null
     error = sessionResult.error
