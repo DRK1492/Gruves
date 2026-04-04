@@ -698,12 +698,15 @@ export default function SongDetailPage() {
     name,
     loopStart,
     loopEnd,
+    linkId,
   }: {
     name: string
     loopStart: number
     loopEnd: number
+    linkId?: string
   }) => {
-    if (!id || !session?.user?.id || !previewLinkId) {
+    const targetLinkId = linkId || previewLinkId
+    if (!id || !session?.user?.id || !targetLinkId) {
       throw new Error('Open a YouTube link before saving a loop.')
     }
 
@@ -711,7 +714,7 @@ export default function SongDetailPage() {
       .from('song_loops')
       .insert({
         song_id: id,
-        link_id: previewLinkId,
+        link_id: targetLinkId,
         user_id: session.user.id,
         name: name.trim(),
         loop_start: loopStart,

@@ -50,7 +50,7 @@ type ListenSectionProps = {
   handleLinkRowClick: (link: SongLink) => void
   handleLinkRowDoubleClick: (link: SongLink) => void
   handleOpenLink: (link: SongLink) => void
-  handleSavePracticeLoop: (loop: { name: string; loopStart: number; loopEnd: number }) => Promise<void>
+  handleSavePracticeLoop: (loop: { name: string; loopStart: number; loopEnd: number; linkId?: string }) => Promise<void>
   handleDeletePracticeLoop: (loopId: string) => Promise<void>
   handleUpdateLink: () => void
   linkError: string
@@ -138,6 +138,7 @@ export default function ListenSection({
             name: 'Guitar riff after the intro',
             loopStart: 41,
             loopEnd: 49,
+            linkId: firstLink.id,
           })
         } catch (err) {
           if (process.env.NODE_ENV === 'development') {
