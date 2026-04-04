@@ -67,7 +67,11 @@ export default async function middleware(request: NextRequest) {
   if (!user) {
     console.log('[MIDDLEWARE] No user found, redirecting to /auth')
     const url = request.nextUrl.clone()
+    // Preserve the original destination so AuthGate can send the user there
+    // after they authenticate, instead of always bouncing them to /.
+    const next = request.nextUrl.pathname
     url.pathname = '/auth'
+    url.searchParams.set('next', next)
     return NextResponse.redirect(url)
   }
 

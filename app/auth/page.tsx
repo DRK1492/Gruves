@@ -50,7 +50,9 @@ export default function AuthPage() {
       setMessage('Incorrect email or password. Please try again.')
     } else {
       setMessage(`✅ Logged in as ${data.user?.email ?? email}`)
-      router.push('/')
+      const next = searchParams.get('next')
+      const destination = next && next.startsWith('/') ? decodeURIComponent(next) : '/'
+      router.push(destination)
     }
   }
 
