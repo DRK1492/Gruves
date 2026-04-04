@@ -142,12 +142,12 @@ export function useYouTubeLoop({
     setLoopEnabled(false)
   }
 
-  const loadLoop = (nextLoopStart: number, nextLoopEnd: number, autoEnable = false) => {
+  const loadLoop = useCallback((nextLoopStart: number, nextLoopEnd: number, autoEnable = false) => {
     setLoopStart(nextLoopStart)
     setLoopEnd(nextLoopEnd)
     setLoopEnabled(autoEnable && nextLoopStart < nextLoopEnd)
     jumpToTime(nextLoopStart)
-  }
+  }, [])
 
   const syncPlayerMetadata = useCallback((nextPlayer: YouTubePlayer | null) => {
     setAvailablePlaybackRates(getSafePlaybackRates(nextPlayer))
