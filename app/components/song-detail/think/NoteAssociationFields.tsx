@@ -45,47 +45,36 @@ export default function NoteAssociationFields({
     })
   }
 
+  const hasAny = links.length > 0 || pdfFiles.length > 0 || recordings.length > 0
+  if (!hasAny) return null
+
   return (
-    <div className="flex flex-wrap gap-2 mb-3">
-      <select
-        value={linkId}
-        onChange={handleLinkChange}
-        className="input flex-1 min-w-[220px]"
-        disabled={links.length === 0}
-      >
-        <option value="">Link to Listen item (optional)</option>
-        {links.map(link => (
-          <option key={link.id} value={link.id}>
-            {link.title || link.url}
-          </option>
-        ))}
-      </select>
-      <select
-        value={pdfId}
-        onChange={handlePdfChange}
-        className="input flex-1 min-w-[220px]"
-        disabled={pdfFiles.length === 0}
-      >
-        <option value="">Link to Read item (optional)</option>
-        {pdfFiles.map(file => (
-          <option key={file.id} value={file.id}>
-            {file.file_name}
-          </option>
-        ))}
-      </select>
-      <select
-        value={recordingId}
-        onChange={handleRecordingChange}
-        className="input flex-1 min-w-[220px]"
-        disabled={recordings.length === 0}
-      >
-        <option value="">Link to Record item (optional)</option>
-        {recordings.map(recordingItem => (
-          <option key={recordingItem.id} value={recordingItem.id}>
-            {recordingItem.file_name}
-          </option>
-        ))}
-      </select>
+    <div className="think-assoc-row">
+      <span className="think-assoc-label">Link to:</span>
+      {links.length > 0 && (
+        <select value={linkId} onChange={handleLinkChange} className="think-assoc-select">
+          <option value="">Listen…</option>
+          {links.map(link => (
+            <option key={link.id} value={link.id}>{link.title || link.url}</option>
+          ))}
+        </select>
+      )}
+      {pdfFiles.length > 0 && (
+        <select value={pdfId} onChange={handlePdfChange} className="think-assoc-select">
+          <option value="">Read…</option>
+          {pdfFiles.map(file => (
+            <option key={file.id} value={file.id}>{file.file_name}</option>
+          ))}
+        </select>
+      )}
+      {recordings.length > 0 && (
+        <select value={recordingId} onChange={handleRecordingChange} className="think-assoc-select">
+          <option value="">Record…</option>
+          {recordings.map(r => (
+            <option key={r.id} value={r.id}>{r.file_name}</option>
+          ))}
+        </select>
+      )}
     </div>
   )
 }

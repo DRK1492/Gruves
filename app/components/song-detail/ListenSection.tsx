@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import type { Dispatch, RefObject, SetStateAction } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import NoteContent from '../NoteContent'
 import type { PracticeLoop } from '../YouTubePracticePlayer'
 import { getYouTubeEmbedUrl } from '@/utils/youtubeHelpers'
@@ -52,6 +52,7 @@ type ListenSectionProps = {
   handleOpenLink: (link: SongLink) => void
   handleSavePracticeLoop: (loop: { name: string; loopStart: number; loopEnd: number; linkId?: string }) => Promise<void>
   handleDeletePracticeLoop: (loopId: string) => Promise<void>
+  handleRenamePracticeLoop: (loopId: string, name: string) => Promise<void>
   handleUpdateLink: () => void
   linkError: string
   linkTitle: string
@@ -96,6 +97,7 @@ export default function ListenSection({
   handleOpenLink,
   handleSavePracticeLoop,
   handleDeletePracticeLoop,
+  handleRenamePracticeLoop,
   handleUpdateLink,
   linkError,
   linkTitle,
@@ -123,6 +125,17 @@ export default function ListenSection({
   isDemo,
 }: ListenSectionProps) {
   const [showDemoModal, setShowDemoModal] = useState(isDemo && links.length > 0)
+
+  useEffect(() => {
+    if (!previewYoutubeUrl || !youtubePreviewRef.current) return
+    const timeout = setTimeout(() => {
+      const el = youtubePreviewRef.current
+      if (!el) return
+      const top = window.scrollY + el.getBoundingClientRect().top - scrollMarginTop - 12
+      window.scrollTo({ top, behavior: 'smooth' })
+    }, 150)
+    return () => clearTimeout(timeout)
+  }, [previewYoutubeUrl, scrollMarginTop, youtubePreviewRef])
 
   const handleShowMeClick = async () => {
     setShowDemoModal(false)
@@ -182,7 +195,27 @@ export default function ListenSection({
         </div>
       </div>
       <div className="section-divider" />
-      <div className="flex gap-2 mb-2">
+      <div className="listen-add-form">
+        <div className="flex gap-2">
+          <input
+            type="url"
+            placeholder="Paste a YouTube or web link…"
+            value={linkUrl}
+            onChange={e => {
+              setLinkUrl(e.target.value)
+              if (linkError) setLinkError('')
+            }}
+            onKeyDown={e => { if (e.key === 'Enter') handleAddLink() }}
+            className="input flex-1"
+          />
+          <button
+            onClick={handleAddLink}
+            disabled={!linkUrl.trim() || !sessionUserId}
+            className={`button-primary ${!linkUrl.trim() || !sessionUserId ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            Add
+          </button>
+        </div>
         <input
           type="text"
           placeholder="Title (optional)"
@@ -191,27 +224,10 @@ export default function ListenSection({
             setLinkTitle(e.target.value)
             if (linkError) setLinkError('')
           }}
-          className="input flex-1"
+          className="input w-full listen-title-input"
         />
-        <input
-          type="url"
-          placeholder="https://..."
-          value={linkUrl}
-          onChange={e => {
-            setLinkUrl(e.target.value)
-            if (linkError) setLinkError('')
-          }}
-          className="input flex-1"
-        />
-        <button
-          onClick={handleAddLink}
-          disabled={!linkUrl.trim() || !sessionUserId}
-          className={`button-primary ${!linkUrl.trim() || !sessionUserId ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          Add
-        </button>
+        {linkError && <p className="text-sm text-red-600 mt-1">{linkError}</p>}
       </div>
-      {linkError && <p className="text-sm text-red-600 mb-3">{linkError}</p>}
       {showDemoModal && isDemo && links.length > 0 && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="card p-6 max-w-md border border-accent/20">
@@ -244,139 +260,119 @@ export default function ListenSection({
         </div>
       )}
       {links.length === 0 ? (
-        <p className="muted">No links yet.</p>
+        <div className="section-empty-state">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" className="section-empty-icon" aria-hidden="true">
+            <path d="M10 13a4 4 0 0 1 0-6l2-2a4 4 0 0 1 6 6l-1 1" />
+            <path d="M14 11a4 4 0 0 1 0 6l-2 2a4 4 0 0 1-6-6l1-1" />
+          </svg>
+          <p className="text-sm muted">No links yet — add a YouTube or web link to get started</p>
+        </div>
       ) : (
         <>
           {globalViewMode === 'table' && (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Title</th>
-                  <th>Source</th>
-                  <th className="table-actions">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {links.map(link => (
-                  editingLinkId === link.id ? (
-                    <tr key={link.id}>
-                      <td colSpan={3}>
-                        <div className="table-edit">
-                          <div className="flex gap-2 mb-2">
-                            <input
-                              type="text"
-                              placeholder="Title (optional)"
-                              value={editingLinkTitle}
-                              onChange={e => {
-                                setEditingLinkTitle(e.target.value)
-                                if (linkError) setLinkError('')
-                              }}
-                              onKeyDown={event => {
-                                if (event.key === 'Enter') {
-                                  event.preventDefault()
-                                  handleUpdateLink()
-                                }
-                              }}
-                              className="input flex-1"
-                              autoFocus
-                            />
-                            <input
-                              type="url"
-                              placeholder="https://..."
-                              value={editingLinkUrl}
-                              onChange={e => {
-                                setEditingLinkUrl(e.target.value)
-                                if (linkError) setLinkError('')
-                              }}
-                              onKeyDown={event => {
-                                if (event.key === 'Enter') {
-                                  event.preventDefault()
-                                  handleUpdateLink()
-                                }
-                              }}
-                              className="input flex-1"
-                            />
-                          </div>
-                          <div className="flex gap-3">
-                            <button onClick={handleUpdateLink} className="button-primary">
-                              Save
-                            </button>
-                            <button onClick={handleCancelLinkEdit} className="button-ghost">
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    <tr
-                      key={link.id}
-                      className="table-row row-clickable"
-                      onClick={() => {
-                        if (skipLinkRowClickRef.current) return
-                        if (!editingLinkId) handleLinkRowClick(link)
-                      }}
-                      onDoubleClick={() => {
-                        if (skipLinkRowClickRef.current) return
-                        if (!editingLinkId) handleLinkRowDoubleClick(link)
-                      }}
-                    >
-                      <td className="table-cell">{getLinkDisplayTitle(link)}</td>
-                      <td className="table-cell muted">{getLinkSource(link.url)}</td>
-                      <td className="table-cell table-actions">
-                        <div className="menu-container" onClick={event => event.stopPropagation()}>
-                          <button
-                            type="button"
-                            className="button-ghost menu-trigger"
-                            onClick={event => {
-                              event.stopPropagation()
-                              setOpenLinkMenuId(prev => (prev === link.id ? null : link.id))
-                            }}
-                          >
-                            <span className="menu-dots" aria-hidden="true">⋯</span>
-                            <span className="sr-only">Link actions</span>
-                          </button>
-                          {openLinkMenuId === link.id && (
-                            <div className="menu" onClick={event => event.stopPropagation()}>
-                              <button
-                                type="button"
-                                className="menu-item"
-                                onClick={() => {
-                                  handleEditLink(link)
-                                  setOpenLinkMenuId(null)
-                                }}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                className="menu-item"
-                                onClick={() => {
-                                  window.open(link.url, '_blank', 'noopener,noreferrer')
-                                  setOpenLinkMenuId(null)
-                                }}
-                              >
-                                Open
-                              </button>
-                              <button
-                                type="button"
-                                className="menu-item menu-danger"
-                                onClick={() => {
-                                  handleDeleteLink(link.id)
-                                  setOpenLinkMenuId(null)
-                                }}
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                ))}
-              </tbody>
-            </table>
+            <div className="listen-link-list">
+              {links.map(link => {
+                const isYoutube = Boolean(getYouTubeEmbedUrl(link.url))
+                return editingLinkId === link.id ? (
+                  <div key={link.id} className="listen-link-card listen-link-editing">
+                    <div className="flex gap-2 mb-2">
+                      <input
+                        type="text"
+                        placeholder="Title (optional)"
+                        value={editingLinkTitle}
+                        onChange={e => {
+                          setEditingLinkTitle(e.target.value)
+                          if (linkError) setLinkError('')
+                        }}
+                        onKeyDown={event => {
+                          if (event.key === 'Enter') { event.preventDefault(); handleUpdateLink() }
+                        }}
+                        className="input flex-1"
+                        autoFocus
+                      />
+                      <input
+                        type="url"
+                        placeholder="https://..."
+                        value={editingLinkUrl}
+                        onChange={e => {
+                          setEditingLinkUrl(e.target.value)
+                          if (linkError) setLinkError('')
+                        }}
+                        onKeyDown={event => {
+                          if (event.key === 'Enter') { event.preventDefault(); handleUpdateLink() }
+                        }}
+                        className="input flex-1"
+                      />
+                    </div>
+                    <div className="flex gap-3">
+                      <button onClick={handleUpdateLink} className="button-primary">Save</button>
+                      <button onClick={handleCancelLinkEdit} className="button-ghost">Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    key={link.id}
+                    className="listen-link-card"
+                    onClick={() => {
+                      if (skipLinkRowClickRef.current) return
+                      if (!editingLinkId) handleLinkRowClick(link)
+                    }}
+                    onDoubleClick={() => {
+                      if (skipLinkRowClickRef.current) return
+                      if (!editingLinkId) handleLinkRowDoubleClick(link)
+                    }}
+                  >
+                    {/* Site icon */}
+                    <div className="listen-link-icon" aria-hidden="true">
+                      {isYoutube ? (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-2.75 12.38 12.38 0 0 0-6.55 0A4.83 4.83 0 0 1 5.5 6.69C3.5 8.32 2.28 11 2.28 12s1.22 3.68 3.22 5.31a4.83 4.83 0 0 1 3.54-2.69 12.38 12.38 0 0 0 6.55 0 4.83 4.83 0 0 1 3.54 2.69C21.13 15.68 22.28 13 22.28 12s-1.15-3.68-2.69-5.31zM10 15V9l5 3-5 3z"/>
+                        </svg>
+                      ) : (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                          <path d="M10 13a4 4 0 0 1 0-6l2-2a4 4 0 0 1 6 6l-1 1" />
+                          <path d="M14 11a4 4 0 0 1 0 6l-2 2a4 4 0 0 1-6-6l1-1" />
+                        </svg>
+                      )}
+                    </div>
+                    {/* Title + domain */}
+                    <div className="listen-link-content">
+                      <span className="listen-link-title">{getLinkDisplayTitle(link)}</span>
+                      <span className="listen-link-domain">{getLinkSource(link.url)}</span>
+                    </div>
+                    {/* Hover actions */}
+                    <div className="listen-link-actions" onClick={e => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        className="listen-link-action-btn"
+                        title="Edit"
+                        onClick={() => { handleEditLink(link); setOpenLinkMenuId(null) }}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" strokeWidth="1.75" stroke="currentColor" aria-hidden="true">
+                          <path d="M11.013 1.427a1.75 1.75 0 012.474 0l1.086 1.086a1.75 1.75 0 010 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 01-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61z" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        className="listen-link-action-btn listen-link-action-danger"
+                        title="Delete"
+                        onClick={() => { handleDeleteLink(link.id); setOpenLinkMenuId(null) }}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" strokeWidth="1.75" stroke="currentColor" aria-hidden="true">
+                          <path d="M6.5 1.75a.25.25 0 01.25-.25h2.5a.25.25 0 01.25.25V3h-3V1.75zm4.5 0V3h2.25a.75.75 0 010 1.5H2.75a.75.75 0 010-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75zM4.496 6.675a.75.75 0 10-1.492.15l.66 6.6A1.75 1.75 0 005.405 15h5.19a1.75 1.75 0 001.741-1.575l.66-6.6a.75.75 0 00-1.492-.15l-.66 6.6a.25.25 0 01-.249.225H5.405a.25.25 0 01-.249-.225l-.66-6.6z" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                    </div>
+                    {/* Play indicator */}
+                    <div className="listen-link-play" aria-hidden="true">
+                      <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M3 2.75C3 1.784 3.784 1 4.75 1a1.75 1.75 0 01.875.234l8.5 5.25a1.75 1.75 0 010 3.032l-8.5 5.25A1.75 1.75 0 013 13.25V2.75z"/>
+                      </svg>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           )}
           {globalViewMode === 'grid' && (
             <div className="grid grid-two">
@@ -589,34 +585,37 @@ export default function ListenSection({
         </>
       )}
       {previewYoutubeUrl && (
-        <div className="mt-4" ref={youtubePreviewRef}>
-          <p className="label mb-2">Video preview</p>
-          <div className="card-strong p-2">
-            <p className="text-sm font-medium mb-2 mono">{previewYoutubeTitle || 'YouTube'}</p>
+        <div className="listen-player-wrap" ref={youtubePreviewRef}>
+          <div className="listen-player-header">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ color: 'var(--text-faint)' }}>
+              <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-2.75 12.38 12.38 0 0 0-6.55 0A4.83 4.83 0 0 1 5.5 6.69C3.5 8.32 2.28 11 2.28 12s1.22 3.68 3.22 5.31a4.83 4.83 0 0 1 3.54-2.69 12.38 12.38 0 0 0 6.55 0 4.83 4.83 0 0 1 3.54 2.69C21.13 15.68 22.28 13 22.28 12s-1.15-3.68-2.69-5.31zM10 15V9l5 3-5 3z"/>
+            </svg>
+            <span className="text-sm font-medium">{previewYoutubeTitle || 'YouTube'}</span>
+          </div>
+          <div className="card-strong p-2 listen-player-container">
             <YouTubePracticePlayer
               videoUrl={previewYoutubeUrl}
               title={previewYoutubeTitle || 'YouTube player'}
               savedLoops={savedLoopsForPreviewLink}
               onSaveLoop={handleSavePracticeLoop}
               onDeleteLoop={handleDeletePracticeLoop}
+              onRenameLoop={handleRenamePracticeLoop}
             />
+          </div>
+          {linkedNotesForLink.length > 0 && (
             <div className="mt-3">
               <p className="label mb-2">Linked notes</p>
-              {linkedNotesForLink.length === 0 ? (
-                <p className="text-sm muted">No linked notes yet.</p>
-              ) : (
-                <ul className="space-y-2">
-                  {linkedNotesForLink.map(note => (
-                    <li key={note.id} className="row">
-                      <div className="note-content">
-                        <NoteContent text={note.content} />
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <ul className="space-y-2">
+                {linkedNotesForLink.map(note => (
+                  <li key={note.id} className="row">
+                    <div className="note-content">
+                      <NoteContent text={note.content} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>

@@ -90,7 +90,13 @@ export default function ThinkSection({
         setRecordingId={setNewNoteRecordingId}
       />
       {notes.length === 0 ? (
-        <p className="muted">No notes yet.</p>
+        <div className="section-empty-state">
+          <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="section-empty-icon" aria-hidden="true">
+            <path d="M6 5h12v14H6z" />
+            <path d="M9 9h6M9 13h6M9 17h3" />
+          </svg>
+          <p className="text-sm muted">No notes yet — write something above</p>
+        </div>
       ) : (
         <>
           {globalViewMode === 'table' && (

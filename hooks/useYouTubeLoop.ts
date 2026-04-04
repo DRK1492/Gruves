@@ -112,14 +112,16 @@ export function useYouTubeLoop({
     const nextLoopStart = getSafeCurrentTime(player)
     setLoopStart(nextLoopStart)
     setCurrentTime(nextLoopStart)
-    setLoopEnabled(prev => (loopEnd != null && nextLoopStart < loopEnd ? prev : false))
+    // Auto-enable when both markers are set and valid
+    setLoopEnabled(loopEnd != null && nextLoopStart < loopEnd)
   }
 
   const setLoopEndFromCurrentTime = () => {
     const nextLoopEnd = getSafeCurrentTime(player)
     setLoopEnd(nextLoopEnd)
     setCurrentTime(nextLoopEnd)
-    setLoopEnabled(prev => (loopStart != null && loopStart < nextLoopEnd ? prev : false))
+    // Auto-enable as soon as a valid closed loop exists
+    setLoopEnabled(loopStart != null && loopStart < nextLoopEnd)
   }
 
   const toggleLooping = () => {

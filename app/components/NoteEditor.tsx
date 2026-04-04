@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useLayoutEffect, useMemo, useRef } from 'react'
 
 const htmlRegex = /<\/?[a-z][\s\S]*>/i
 
@@ -39,7 +39,7 @@ export default function NoteEditor({
     return htmlRegex.test(value) ? value : normalizePlainText(value)
   }, [value])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!editorRef.current) return
     if (lastValueRef.current === htmlValue) return
     editorRef.current.innerHTML = htmlValue

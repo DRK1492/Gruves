@@ -732,6 +732,25 @@ export default function SongDetailPage() {
     addToast({ title: 'Loop saved', variant: 'success' })
   }
 
+  const handleRenamePracticeLoop = async (loopId: string, name: string) => {
+    if (!session?.user?.id) throw new Error('You must be signed in to rename a loop.')
+    const trimmed = name.trim()
+    if (!trimmed) return
+
+    const { error } = await supabase
+      .from('song_loops')
+      .update({ name: trimmed })
+      .eq('id', loopId)
+      .eq('user_id', session.user.id)
+
+    if (error) {
+      if (process.env.NODE_ENV === 'development') console.error('Error renaming practice loop:', error)
+      throw new Error(error.message || 'Could not rename this loop.')
+    }
+
+    setSavedLoops(prev => prev.map(l => l.id === loopId ? { ...l, name: trimmed } : l))
+  }
+
   const handleDeletePracticeLoop = async (loopId: string) => {
     if (!session?.user?.id) {
       throw new Error('You must be signed in to delete a loop.')
@@ -1464,33 +1483,80 @@ export default function SongDetailPage() {
 
   return (
     <div className="page">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-4">
-          <button onClick={() => router.push('/songs')} className="button-link button-link-large">
-            ← Back to Songs
-          </button>
-          {fromSetlistId && (
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <button onClick={() => router.push('/songs')} className="breadcrumb-link">
+          ← Songs
+        </button>
+        {fromSetlistId && (
+          <>
+            <span className="text-xs" style={{ color: 'var(--text-muted)', opacity: 0.4 }}>/</span>
             <button
               onClick={() => router.push(`/setlists/${fromSetlistId}`)}
-              className="button-link button-link-large"
+              className="breadcrumb-link"
             >
-              ← Back to Setlist
+              ← Setlist
             </button>
-          )}
-        </div>
+          </>
+        )}
       </div>
 
       <div>
         {/* Song Header */}
-        <div className={`card p-4 mb-6 song-header-card song-header-status-${song.status}`} ref={songHeaderCardRef}>
+        <div className={`card p-5 mb-0 song-header-card song-header-status-${song.status}`} ref={songHeaderCardRef}>
         {!isEditing ? (
           <>
-            <div className="song-header-status-wrap">
+            {/* Top bar: status pill left, actions right */}
+            <div className="song-header-topbar">
               <span className={`song-header-status status-${song.status}`}>{songStatusLabel}</span>
+              <div
+                ref={songHeaderMenuRef}
+                className="song-header-actions-right"
+                onClick={event => event.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  className="song-header-edit-btn"
+                  onClick={() => {
+                    setIsEditing(true)
+                    setIsSongHeaderMenuOpen(false)
+                  }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" strokeWidth="1.75" stroke="currentColor" aria-hidden="true">
+                    <path d="M11.013 1.427a1.75 1.75 0 012.474 0l1.086 1.086a1.75 1.75 0 010 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 01-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61z" strokeLinejoin="round"/>
+                  </svg>
+                  Edit song
+                </button>
+                <button
+                  type="button"
+                  className="button-ghost menu-trigger song-header-menu-trigger"
+                  onClick={event => {
+                    event.stopPropagation()
+                    setIsSongHeaderMenuOpen(prev => !prev)
+                  }}
+                >
+                  <span className="menu-dots" aria-hidden="true">⋯</span>
+                  <span className="sr-only">More actions</span>
+                </button>
+                {isSongHeaderMenuOpen && (
+                  <div className="song-header-menu-panel" onClick={event => event.stopPropagation()}>
+                    <button
+                      type="button"
+                      className="menu-item menu-danger"
+                      onClick={() => {
+                        handleDeleteSong()
+                        setIsSongHeaderMenuOpen(false)
+                      }}
+                    >
+                      Delete song
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
+            {/* Left-aligned content */}
             <div className="song-header-main">
-              <h1 className="text-4xl font-semibold tracking-tight heading-display song-header-title">{song.title}</h1>
-              <p className="muted song-data">{song.artist || 'Unknown Artist'}</p>
+              <h1 className="text-3xl font-semibold tracking-tight heading-display song-header-title">{song.title}</h1>
+              <p className="muted song-data mt-1">{song.artist || 'Unknown Artist'}</p>
               {songGenres.length > 0 && (
                 <div className="song-header-genres">
                   {songGenres.map(g => (
@@ -1503,49 +1569,6 @@ export default function SongDetailPage() {
                   ))}
                 </div>
               )}
-            </div>
-            <div className="song-header-menu-row">
-              <div
-                ref={songHeaderMenuRef}
-                className="menu-container"
-                onClick={event => event.stopPropagation()}
-              >
-                <button
-                  type="button"
-                  className="button-ghost menu-trigger song-header-menu-trigger"
-                  onClick={event => {
-                    event.stopPropagation()
-                    setIsSongHeaderMenuOpen(prev => !prev)
-                  }}
-                >
-                  <span className="menu-dots" aria-hidden="true">⋯</span>
-                  <span className="sr-only">Song actions</span>
-                </button>
-                {isSongHeaderMenuOpen && (
-                  <div className="song-header-menu-panel" onClick={event => event.stopPropagation()}>
-                    <button
-                      type="button"
-                      className="menu-item"
-                      onClick={() => {
-                        setIsEditing(true)
-                        setIsSongHeaderMenuOpen(false)
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="menu-item menu-danger"
-                      onClick={() => {
-                        handleDeleteSong()
-                        setIsSongHeaderMenuOpen(false)
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                )}
-              </div>
             </div>
             <div className="song-header-glow" aria-hidden="true" />
           </>
@@ -1635,7 +1658,7 @@ export default function SongDetailPage() {
 
         <div
           ref={sectionNavRef}
-          className="card song-section-nav mb-6"
+          className="card song-section-nav mb-5"
           style={{ top: `${headerHeight}px` }}
         >
           <div className="song-section-nav-inner">
@@ -1648,7 +1671,9 @@ export default function SongDetailPage() {
                 onClick={() => scrollToSection(item.ref, item.id)}
               >
                 <span>{item.label}</span>
-                <span className="section-nav-count">{item.count}</span>
+                {item.count > 0 && (
+                  <span className="section-nav-count">{item.count}</span>
+                )}
               </button>
             ))}
           </div>
@@ -1666,6 +1691,7 @@ export default function SongDetailPage() {
           handleCancelLinkEdit={handleCancelLinkEdit}
           handleDeleteLink={handleDeleteLink}
           handleDeletePracticeLoop={handleDeletePracticeLoop}
+          handleRenamePracticeLoop={handleRenamePracticeLoop}
           handleEditLink={handleEditLink}
           handleLinkRowClick={handleLinkRowClick}
           handleLinkRowDoubleClick={handleLinkRowDoubleClick}

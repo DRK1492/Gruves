@@ -28,7 +28,7 @@ export default function NoteForm({
         value={value}
         onChange={onChange}
         placeholder={submitLabel === 'Save Note' ? 'Add a note...' : 'Edit note...'}
-        className="input note-editor w-full mb-2 min-h-[100px]"
+        className="input note-editor w-full mb-2 min-h-[72px]"
       />
       <NoteAssociationFields
         links={links}
@@ -41,12 +41,12 @@ export default function NoteForm({
         setPdfId={setPdfId}
         setRecordingId={setRecordingId}
       />
-      <div className="flex gap-3">
-        <button onClick={onSubmit} className="button-primary">
+      <div className="flex gap-2">
+        <button onClick={onSubmit} className="button-primary" style={{ padding: '0.28rem 0.7rem', fontSize: '0.8rem' }}>
           {submitLabel}
         </button>
         {onCancel && cancelLabel && (
-          <button onClick={onCancel} className="button-ghost">
+          <button onClick={onCancel} className="button-ghost" style={{ padding: '0.28rem 0.6rem', fontSize: '0.8rem' }}>
             {cancelLabel}
           </button>
         )}

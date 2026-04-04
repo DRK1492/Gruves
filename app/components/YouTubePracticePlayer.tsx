@@ -21,6 +21,7 @@ type YouTubePracticePlayerProps = {
   videoUrl: string
   savedLoops?: PracticeLoop[]
   onDeleteLoop?: (loopId: string) => Promise<void> | void
+  onRenameLoop?: (loopId: string, name: string) => Promise<void> | void
   onSaveLoop?: (loop: { name: string; loopStart: number; loopEnd: number }) => Promise<void> | void
 }
 
@@ -29,6 +30,7 @@ export default function YouTubePracticePlayer({
   videoUrl,
   savedLoops = [],
   onDeleteLoop,
+  onRenameLoop,
   onSaveLoop,
 }: YouTubePracticePlayerProps) {
   const videoId = useMemo(() => getYouTubeVideoId(videoUrl), [videoUrl])
@@ -38,6 +40,7 @@ export default function YouTubePracticePlayer({
       key={videoId ?? videoUrl}
       savedLoops={savedLoops}
       onDeleteLoop={onDeleteLoop}
+      onRenameLoop={onRenameLoop}
       onSaveLoop={onSaveLoop}
       title={title}
       videoId={videoId}
@@ -48,6 +51,7 @@ export default function YouTubePracticePlayer({
 type YouTubePracticePlayerInnerProps = {
   savedLoops: PracticeLoop[]
   onDeleteLoop?: (loopId: string) => Promise<void> | void
+  onRenameLoop?: (loopId: string, name: string) => Promise<void> | void
   onSaveLoop?: (loop: { name: string; loopStart: number; loopEnd: number }) => Promise<void> | void
   title: string
   videoId: string | null
@@ -56,6 +60,7 @@ type YouTubePracticePlayerInnerProps = {
 function YouTubePracticePlayerInner({
   savedLoops,
   onDeleteLoop,
+  onRenameLoop,
   onSaveLoop,
   title,
   videoId,
@@ -73,6 +78,9 @@ function YouTubePracticePlayerInner({
   const [isSavingLoop, setIsSavingLoop] = useState(false)
   const [deletingLoopId, setDeletingLoopId] = useState<string | null>(null)
   const [activeSavedLoopId, setActiveSavedLoopId] = useState<string | null>(savedLoops[0]?.id ?? null)
+  const [editingLoopId, setEditingLoopId] = useState<string | null>(null)
+  const [editingLoopName, setEditingLoopName] = useState('')
+  const [renameError, setRenameError] = useState('')
 
   const {
     canLoop,
@@ -227,6 +235,20 @@ function YouTubePracticePlayerInner({
     }
   }
 
+  const handleCommitRename = async () => {
+    if (!editingLoopId || !onRenameLoop) { setEditingLoopId(null); return }
+    const trimmed = editingLoopName.trim()
+    if (!trimmed) { setEditingLoopId(null); return }
+    try {
+      await onRenameLoop(editingLoopId, trimmed)
+      setRenameError('')
+    } catch (error) {
+      setRenameError(error instanceof Error ? error.message : 'Could not rename loop.')
+    } finally {
+      setEditingLoopId(null)
+    }
+  }
+
   const handleLoadSavedLoop = (loop: PracticeLoop) => {
     loadLoop(loop.loopStart, loop.loopEnd, true)
     setActiveSavedLoopId(loop.id)
@@ -243,7 +265,7 @@ function YouTubePracticePlayerInner({
   }
 
   return (
-    <div>
+    <div style={{ width: '100%' }}>
       <div className="aspect-video overflow-hidden rounded">
         <div
           ref={playerHostRef}
@@ -252,162 +274,220 @@ function YouTubePracticePlayerInner({
         />
       </div>
 
-      <div className="mt-3 space-y-3">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-          <span className="label">Now</span>
-          <span className="mono">{formatYouTubeTime(currentTime)}</span>
-          <span className="label">A</span>
-          <span className="mono">{formatYouTubeTime(loopStart)}</span>
-          <span className="label">B</span>
-          <span className="mono">{formatYouTubeTime(loopEnd)}</span>
+      <div className="player-controls">
+        {/* Row 1: A marker · B marker · Now · Speed */}
+        <div className="player-controls-row">
+          <div className="player-ab-group">
+            <span className="player-marker-label">A</span>
+            <button
+              type="button"
+              className="player-time-chip"
+              onClick={jumpToLoopStart}
+              disabled={loopStart == null}
+              title={loopStart != null ? 'Jump to A' : undefined}
+            >
+              {formatYouTubeTime(loopStart)}
+            </button>
+            <button
+              type="button"
+              className="player-set-btn"
+              onClick={setLoopStartFromCurrentTime}
+              disabled={!player}
+              title="Set A to current time"
+            >
+              Set
+            </button>
+          </div>
+
+          <span className="player-ab-arrow" aria-hidden="true">→</span>
+
+          <div className="player-ab-group">
+            <span className="player-marker-label">B</span>
+            <button
+              type="button"
+              className="player-time-chip"
+              onClick={jumpToLoopEnd}
+              disabled={loopEnd == null}
+              title={loopEnd != null ? 'Jump to B' : undefined}
+            >
+              {formatYouTubeTime(loopEnd)}
+            </button>
+            <button
+              type="button"
+              className="player-set-btn"
+              onClick={setLoopEndFromCurrentTime}
+              disabled={!player}
+              title="Set B to current time"
+            >
+              Set
+            </button>
+          </div>
+
+          <div className="player-controls-spacer" />
+
+          {/* Current time display */}
+          <div className="player-now-display" title="Current position">
+            <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+              <circle cx="6" cy="6" r="4.5" />
+              <path d="M6 3.5V6l1.8 1.8" />
+            </svg>
+            {formatYouTubeTime(currentTime)}
+          </div>
+
+          {/* Speed selector */}
+          <div className="player-speed-wrap">
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true" className="player-speed-icon">
+              <path d="M8 3a5 5 0 1 0 4.546 2.914" />
+              <path d="M8 8l2.5-3" />
+              <circle cx="8" cy="8" r="1" fill="currentColor" stroke="none" />
+            </svg>
+            <select
+              id={speedSelectId}
+              className="player-speed-select"
+              value={playbackRate}
+              onChange={event => updatePlaybackRate(Number(event.target.value))}
+              disabled={!player}
+              title="Playback speed"
+            >
+              {playbackRateOptions.map(rate => (
+                <option key={rate} value={rate}>{rate}×</option>
+              ))}
+            </select>
+            <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor" aria-hidden="true" className="player-speed-chevron">
+              <path d="M1 2.5l3 3 3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" fill="none"/>
+            </svg>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Row 2: Loop toggle · Clear · hint */}
+        <div className="player-controls-row">
           <button
             type="button"
-            className="button-primary"
-            onClick={setLoopStartFromCurrentTime}
-            disabled={!player}
-          >
-            Set A
-          </button>
-          <button
-            type="button"
-            className="button-primary"
-            onClick={setLoopEndFromCurrentTime}
-            disabled={!player}
-          >
-            Set B
-          </button>
-          <button
-            type="button"
-            className={isLooping ? 'button-primary' : 'button-ghost'}
+            className={`player-loop-btn${isLooping ? ' player-loop-btn-active' : ''}`}
             onClick={toggleLooping}
             disabled={!canLoop}
             aria-pressed={isLooping}
           >
-            {isLooping ? 'Loop On' : 'Loop Off'}
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="17 1 21 5 17 9" />
+              <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+              <polyline points="7 23 3 19 7 15" />
+              <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+            </svg>
+            {isLooping ? 'Looping' : 'Loop'}
           </button>
-          <label className="label" htmlFor={speedSelectId}>
-            Speed
-          </label>
-          <select
-            id={speedSelectId}
-            className="input w-auto min-w-[5.5rem]"
-            value={playbackRate}
-            onChange={event => updatePlaybackRate(Number(event.target.value))}
-            disabled={!player}
-          >
-            {playbackRateOptions.map(rate => (
-              <option key={rate} value={rate}>
-                {rate}x
-              </option>
-            ))}
-          </select>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            className="button-ghost"
-            onClick={jumpToLoopStart}
-            disabled={loopStart == null}
-          >
-            Jump A
-          </button>
-          <button
-            type="button"
-            className="button-ghost"
-            onClick={jumpToLoopEnd}
-            disabled={loopEnd == null}
-          >
-            Jump B
-          </button>
-          <button
-            type="button"
-            className="button-ghost"
+            className="player-clear-btn"
             onClick={clearLoop}
             disabled={loopStart == null && loopEnd == null}
           >
-            Clear Loop
+            × Clear
           </button>
+
+          {loopStart != null && loopEnd != null && !canLoop && (
+            <span className="player-hint">A must be before B</span>
+          )}
         </div>
 
-        {onSaveLoop && (
-          <div className="card-strong p-3">
-            <p className="label mb-2">Save Practice Loop</p>
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                className="input min-w-[12rem] flex-1"
-                placeholder="Intro riff"
-                value={loopName}
-                onChange={event => setLoopName(event.target.value)}
-              />
-              <button
-                type="button"
-                className="button-primary"
-                onClick={handleSaveLoop}
-                disabled={!canLoop || isSavingLoop}
+        {/* Saved loops chips + inline save */}
+        {(savedLoops.length > 0 || onSaveLoop) && (
+          <div className="player-loops-row">
+            {savedLoops.map(loop => (
+              <div
+                key={loop.id}
+                className={`player-loop-chip${loop.id === activeSavedLoopId ? ' player-loop-chip-active' : ''}`}
               >
-                {isSavingLoop ? 'Saving...' : 'Save Loop'}
-              </button>
-            </div>
-            <p className="mt-2 text-xs muted">
-              Save the current A/B range so you can reopen it from this mini player later.
-            </p>
-            {saveError && <p className="mt-2 text-xs text-red-300">{saveError}</p>}
-          </div>
-        )}
-
-        <div className="card-strong p-3">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="label">Saved Loops</p>
-            <p className="text-xs muted">{savedLoops.length} saved</p>
-          </div>
-          {savedLoops.length === 0 ? (
-            <p className="text-xs muted">No saved loops for this video yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {savedLoops.map(loop => (
-                <div
-                  key={loop.id}
-                  className={loop.id === activeSavedLoopId ? 'row row-accent' : 'row'}
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">{loop.name}</p>
-                      <p className="text-xs muted">
-                        {formatYouTubeTime(loop.loopStart)} to {formatYouTubeTime(loop.loopEnd)}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
+                {editingLoopId === loop.id ? (
+                  <>
+                    <input
+                      className="player-loop-chip-edit-input"
+                      value={editingLoopName}
+                      onChange={e => { setEditingLoopName(e.target.value); setRenameError('') }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') { e.preventDefault(); handleCommitRename() }
+                        if (e.key === 'Escape') { setEditingLoopId(null) }
+                      }}
+                      onBlur={handleCommitRename}
+                      autoFocus
+                      onClick={e => e.stopPropagation()}
+                    />
+                    <button
+                      type="button"
+                      className="player-loop-chip-delete"
+                      onMouseDown={e => { e.preventDefault(); setEditingLoopId(null) }}
+                      title="Cancel rename"
+                    >
+                      ×
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="player-loop-chip-btn"
+                      onClick={() => handleLoadSavedLoop(loop)}
+                      title={`${formatYouTubeTime(loop.loopStart)} → ${formatYouTubeTime(loop.loopEnd)}`}
+                    >
+                      {loop.id === activeSavedLoopId && (
+                        <span className="player-loop-chip-dot" aria-hidden="true" />
+                      )}
+                      {loop.name}
+                    </button>
+                    {onRenameLoop && (
                       <button
                         type="button"
-                        className="button-primary"
-                        onClick={() => handleLoadSavedLoop(loop)}
+                        className="player-loop-chip-rename"
+                        onClick={e => { e.stopPropagation(); setEditingLoopId(loop.id); setEditingLoopName(loop.name) }}
+                        title="Rename loop"
                       >
-                        Load
+                        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" strokeWidth="1.75" stroke="currentColor" aria-hidden="true">
+                          <path d="M11.013 1.427a1.75 1.75 0 012.474 0l1.086 1.086a1.75 1.75 0 010 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 01-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61z" strokeLinejoin="round"/>
+                        </svg>
                       </button>
-                      {onDeleteLoop && (
-                        <button
-                          type="button"
-                          className="button-ghost button-danger"
-                          onClick={() => handleDeleteLoop(loop.id)}
-                          disabled={deletingLoopId === loop.id}
-                        >
-                          {deletingLoopId === loop.id ? 'Deleting...' : 'Delete'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          {savedLoopError && <p className="mt-2 text-xs text-red-300">{savedLoopError}</p>}
-        </div>
+                    )}
+                    {onDeleteLoop && (
+                      <button
+                        type="button"
+                        className="player-loop-chip-delete"
+                        onClick={() => handleDeleteLoop(loop.id)}
+                        disabled={deletingLoopId === loop.id}
+                        title="Delete loop"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            ))}
 
-        <p className="text-xs muted">{helperText}</p>
+            {onSaveLoop && canLoop && (
+              <div className="player-save-inline">
+                <input
+                  className="player-save-input"
+                  placeholder="Name this loop…"
+                  value={loopName}
+                  onChange={event => { setLoopName(event.target.value); if (saveError) setSaveError('') }}
+                  onKeyDown={event => { if (event.key === 'Enter') handleSaveLoop() }}
+                />
+                <button
+                  type="button"
+                  className="player-save-btn"
+                  onClick={handleSaveLoop}
+                  disabled={isSavingLoop}
+                >
+                  {isSavingLoop ? '…' : '+ Save'}
+                </button>
+              </div>
+            )}
+
+            {(savedLoopError || saveError || renameError) && (
+              <p className="player-error">{savedLoopError || saveError || renameError}</p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
