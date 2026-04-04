@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export default async function middleware(request: NextRequest) {
+  console.log('[MIDDLEWARE] Processing request:', request.nextUrl.pathname)
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -14,9 +15,7 @@ export default async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          // Write new cookies onto the request so downstream code sees them,
-          // then rebuild supabaseResponse so the browser receives the updated
-          // token pair (critical for the refresh-token rotation flow on Vercel).
+          console.log('[MIDDLEWARE] Setting cookies:', cookiesToSet.map(c => c.name))
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
@@ -27,21 +26,39 @@ export default async function middleware(request: NextRequest) {
     }
   )
 
-  // getUser() calls Supabase's auth server to validate the access token.
-  // When the access token is expired, the client automatically exchanges
-  // the refresh token for a new session and setAll above persists it to
-  // the response cookies — so the browser stays logged in transparently.
-  // Only redirect to /auth when there is genuinely no valid session at all.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Try getUser() first for token refresh capability
+  // If it fails (network error, timeout, etc.), fall back to getSession()
+  let user = null
+  let error = null
+
+  try {
+    const result = await Promise.race([
+      supabase.auth.getUser(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('getUser timeout')), 5000)
+      )
+    ]) as Awaited<ReturnType<typeof supabase.auth.getUser>>
+
+    user = result.data?.user ?? null
+    error = result.error
+    console.log('[MIDDLEWARE] getUser succeeded:', { userId: user?.id })
+  } catch (e) {
+    console.log('[MIDDLEWARE] getUser failed, falling back to getSession:', (e as Error).message)
+    // Fallback to getSession for faster, local JWT decode
+    const sessionResult = await supabase.auth.getSession()
+    user = sessionResult.data?.session?.user ?? null
+    error = sessionResult.error
+    console.log('[MIDDLEWARE] getSession fallback:', { userId: user?.id, error: error?.message })
+  }
 
   if (!user) {
+    console.log('[MIDDLEWARE] No user found, redirecting to /auth')
     const url = request.nextUrl.clone()
     url.pathname = '/auth'
     return NextResponse.redirect(url)
   }
 
+  console.log('[MIDDLEWARE] User authenticated, proceeding')
   return supabaseResponse
 }
 
