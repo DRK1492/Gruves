@@ -270,7 +270,7 @@ function YouTubePracticePlayerInner({
 
   return (
     <div style={{ width: '100%' }}>
-      <div className="aspect-video overflow-hidden rounded">
+      <div className="aspect-video rounded">
         <div
           ref={playerHostRef}
           className="h-full w-full"
