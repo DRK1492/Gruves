@@ -17,6 +17,7 @@ type SongsContentProps = {
   songs: Song[]
   songsViewMode: SongsViewMode
   statusGroups: SongStatusGroup[]
+  showDemoPopup?: boolean
   onDismissDemo?: () => void
 }
 
@@ -34,6 +35,7 @@ export default function SongsContent({
   songs,
   songsViewMode,
   statusGroups,
+  showDemoPopup,
   onDismissDemo,
 }: SongsContentProps) {
   if (loading) {
@@ -81,7 +83,7 @@ export default function SongsContent({
                     onUpdateStatus={onUpdateStatus}
                     openMenuSongId={openMenuSongId}
                     setOpenMenuSongId={setOpenMenuSongId}
-                    showDemoPopup={song.is_demo && songs.length === 1}
+                    showDemoPopup={showDemoPopup === true && song.is_demo === true}
                     onDismissDemo={onDismissDemo}
                   />
                 ))
@@ -115,7 +117,7 @@ export default function SongsContent({
                   onUpdateStatus={onUpdateStatus}
                   openMenuSongId={openMenuSongId}
                   setOpenMenuSongId={setOpenMenuSongId}
-                  showDemoPopup={song.is_demo && songs.length === 1}
+                  showDemoPopup={showDemoPopup === true && song.is_demo === true}
                   onDismissDemo={onDismissDemo}
                 />
               ))}

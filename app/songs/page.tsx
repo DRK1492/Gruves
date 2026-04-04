@@ -42,18 +42,15 @@ export default function SongsPage() {
     index: number
     timeoutId: ReturnType<typeof setTimeout>
   } | null>(null)
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return window.localStorage.getItem('gt_onboarded') !== '1'
-  })
+  // null = profile not yet loaded
+  const [hasSeenLibraryIntro, setHasSeenLibraryIntro] = useState<boolean | null>(null)
+  const [hasSeenDemoIntro, setHasSeenDemoIntro] = useState<boolean | null>(null)
+  // Extra gate for the 500ms delay between popup 1 closing and popup 2 appearing
+  const [demoPopupReady, setDemoPopupReady] = useState(false)
   const [showAddSongModal, setShowAddSongModal] = useState(false)
   const [songsViewMode, setSongsViewMode] = useState<SongsViewMode>(() => {
     if (typeof window === 'undefined') return 'board'
     return window.localStorage.getItem('songs-view-mode') === 'list' ? 'list' : 'board'
-  })
-  const [demoBannerDismissed, setDemoBannerDismissed] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return window.localStorage.getItem('gruves_demo_banner_dismissed') === '1'
   })
   const deferredSearchTerm = useDeferredValue(searchTerm)
   const { session } = useSupabaseSession()
@@ -80,6 +77,25 @@ export default function SongsPage() {
       void seedDemoSong(session.user.id)
     }
   }, [session, songs.length, loading])
+
+  // Fetch onboarding flags from profile
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!session) return
+      const { data } = await supabase
+        .from('profiles')
+        .select('has_seen_library_intro, has_seen_demo_intro')
+        .eq('id', session.user.id)
+        .single()
+      setHasSeenLibraryIntro(data?.has_seen_library_intro ?? false)
+      const alreadySeenIntro = data?.has_seen_library_intro ?? false
+      setHasSeenDemoIntro(data?.has_seen_demo_intro ?? false)
+      // If they've already seen the library intro before this page load,
+      // the demo popup can show immediately (no artificial delay needed).
+      if (alreadySeenIntro) setDemoPopupReady(true)
+    }
+    void fetchProfile()
+  }, [session])
 
   useEffect(() => {
     const fetchGenres = async () => {
@@ -145,14 +161,40 @@ export default function SongsPage() {
     window.localStorage.setItem('songs-view-mode', songsViewMode)
   }, [songsViewMode])
 
-  const dismissOnboarding = () => {
-    window.localStorage.setItem('gt_onboarded', '1')
-    setShowOnboarding(false)
+  // Derived onboarding state — both popups are suppressed once the user has a real song
+  const hasRealSongs = songs.some(s => !s.is_demo)
+  const hasDemoSong = songs.some(s => s.is_demo)
+  const profileLoaded = hasSeenLibraryIntro !== null && hasSeenDemoIntro !== null
+
+  const showOnboarding =
+    !loading && profileLoaded && !hasRealSongs && hasSeenLibraryIntro === false
+  const showDemoPopup =
+    !loading &&
+    profileLoaded &&
+    !hasRealSongs &&
+    hasDemoSong &&
+    hasSeenLibraryIntro === true &&
+    hasSeenDemoIntro === false &&
+    demoPopupReady
+
+  const dismissOnboarding = async () => {
+    setHasSeenLibraryIntro(true)
+    if (session) {
+      await supabase
+        .from('profiles')
+        .upsert({ id: session.user.id, has_seen_library_intro: true })
+    }
+    // Show the demo popup after a short pause so the two modals don't feel simultaneous
+    window.setTimeout(() => setDemoPopupReady(true), 500)
   }
 
-  const dismissDemoBanner = () => {
-    window.localStorage.setItem('gruves_demo_banner_dismissed', '1')
-    setDemoBannerDismissed(true)
+  const dismissDemoBanner = async () => {
+    setHasSeenDemoIntro(true)
+    if (session) {
+      await supabase
+        .from('profiles')
+        .upsert({ id: session.user.id, has_seen_demo_intro: true })
+    }
   }
 
   const handleAddSetlist = async (e: React.FormEvent) => {
@@ -568,6 +610,7 @@ export default function SongsPage() {
         songs={songs}
         songsViewMode={songsViewMode}
         statusGroups={statusGroups}
+        showDemoPopup={showDemoPopup}
         onDismissDemo={dismissDemoBanner}
       />
 
