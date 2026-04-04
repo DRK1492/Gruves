@@ -111,15 +111,19 @@ function YouTubePracticePlayerInner({
     })
   }, [savedLoops])
 
+  // Keep a ref so the auto-load effect can read the latest loops without re-firing
+  // when the savedLoops array reference changes on a parent re-render.
+  const savedLoopsRef = useRef(savedLoops)
+  useEffect(() => { savedLoopsRef.current = savedLoops }, [savedLoops])
+
   useEffect(() => {
-    if (player && activeSavedLoopId && savedLoops.length > 0) {
-      const activeLoop = savedLoops.find(loop => loop.id === activeSavedLoopId)
-      if (activeLoop) {
-        loadLoop(activeLoop.loopStart, activeLoop.loopEnd, true)
-        player.playVideo()
-      }
+    if (!player || !activeSavedLoopId) return
+    const activeLoop = savedLoopsRef.current.find(loop => loop.id === activeSavedLoopId)
+    if (activeLoop) {
+      loadLoop(activeLoop.loopStart, activeLoop.loopEnd, true)
+      player.playVideo()
     }
-  }, [player, activeSavedLoopId, savedLoops, loadLoop])
+  }, [player, activeSavedLoopId, loadLoop])
 
   useEffect(() => {
     if (!videoId || !playerHostRef.current) return

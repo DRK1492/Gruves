@@ -92,8 +92,10 @@ export function useYouTubeLoop({
     // The A/B loop is enforced with a tight polling interval so the section
     // restarts reliably without depending on static iframe URL parameters.
     if (nextCurrentTime >= loopEnd) {
+      // Only resume if the player was already playing — don't override a manual pause.
+      const wasPlaying = player.getPlayerState() === YOUTUBE_PLAYER_STATE.PLAYING
       player.seekTo(loopStart, true)
-      player.playVideo()
+      if (wasPlaying) player.playVideo()
       setCurrentTime(loopStart)
     }
   })

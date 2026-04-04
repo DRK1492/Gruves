@@ -14,6 +14,7 @@ export type YouTubePlayer = {
   getAvailablePlaybackRates: () => number[]
   getCurrentTime: () => number
   getPlaybackRate: () => number
+  getPlayerState: () => number
   playVideo: () => void
   seekTo: (seconds: number, allowSeekAhead: boolean) => void
   setPlaybackRate: (rate: number) => void
