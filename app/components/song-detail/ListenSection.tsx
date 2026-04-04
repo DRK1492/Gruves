@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import type { Dispatch, RefObject, SetStateAction } from 'react'
+import { useState } from 'react'
 import NoteContent from '../NoteContent'
 import type { PracticeLoop } from '../YouTubePracticePlayer'
 import { getYouTubeEmbedUrl } from '@/utils/youtubeHelpers'
@@ -108,6 +109,7 @@ export default function ListenSection({
   youtubePreviewRef,
   isDemo,
 }: ListenSectionProps) {
+  const [showDemoModal, setShowDemoModal] = useState(isDemo && links.length > 0)
   return (
     <div
       id="section-listen"
@@ -168,9 +170,40 @@ export default function ListenSection({
         </button>
       </div>
       {linkError && <p className="text-sm text-red-600 mb-3">{linkError}</p>}
-      {isDemo && links.length > 0 && (
-        <div className="mb-4 p-3 bg-accent/10 border border-accent/30 rounded text-sm muted">
-          💡 Try clicking on the YouTube link below to open the practice player with your saved loops!
+      {showDemoModal && isDemo && links.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="card p-6 max-w-md border border-accent/20">
+            <div className="mb-4">
+              <p className="text-xs font-semibold tracking-wide text-accent uppercase mb-2">Quick tip</p>
+              <h3 className="text-lg font-bold tracking-tight">Try the Practice Player</h3>
+            </div>
+
+            <p className="text-sm leading-relaxed muted mb-6">
+              Click on the YouTube link to open our practice player. You can create A/B loops to practice specific sections!
+            </p>
+
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDemoModal(false)
+                  if (links.length > 0) {
+                    handleLinkRowClick(links[0])
+                  }
+                }}
+                className="button-primary"
+              >
+                Show me
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDemoModal(false)}
+                className="button-ghost text-sm"
+              >
+                I'll view later
+              </button>
+            </div>
+          </div>
         </div>
       )}
       {links.length === 0 ? (
