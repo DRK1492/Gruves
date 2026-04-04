@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-export default async function proxy(request: NextRequest) {
+export default async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -14,8 +14,9 @@ export default async function proxy(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          // Apply new cookies to both the request (for downstream reads) and
-          // the response (so the browser receives the refreshed token pair).
+          // Write new cookies onto the request so downstream code sees them,
+          // then rebuild supabaseResponse so the browser receives the updated
+          // token pair (critical for the refresh-token rotation flow on Vercel).
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
@@ -26,14 +27,16 @@ export default async function proxy(request: NextRequest) {
     }
   )
 
-  // getSession() decodes the JWT from the cookie locally — no network round-trip.
-  // This is safe here because we're only gating access, not trusting session data
-  // for privileged operations. RLS on the database enforces actual data security.
-  // Using getUser() was causing false 307 redirects when the Supabase auth server
-  // was slow or unreachable from the edge runtime.
-  const { data: { session } } = await supabase.auth.getSession()
+  // getUser() calls Supabase's auth server to validate the access token.
+  // When the access token is expired, the client automatically exchanges
+  // the refresh token for a new session and setAll above persists it to
+  // the response cookies — so the browser stays logged in transparently.
+  // Only redirect to /auth when there is genuinely no valid session at all.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth'
     return NextResponse.redirect(url)
