@@ -104,6 +104,15 @@ function YouTubePracticePlayerInner({
   }, [savedLoops])
 
   useEffect(() => {
+    if (player && activeSavedLoopId && savedLoops.length > 0) {
+      const activeLoop = savedLoops.find(loop => loop.id === activeSavedLoopId)
+      if (activeLoop) {
+        loadLoop(activeLoop.loopStart, activeLoop.loopEnd)
+      }
+    }
+  }, [player, activeSavedLoopId, savedLoops, loadLoop])
+
+  useEffect(() => {
     if (!videoId || !playerHostRef.current) return
 
     let isCancelled = false
