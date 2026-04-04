@@ -140,9 +140,11 @@ export default function ListenSection({
             loopEnd: 49,
             linkId: firstLink.id,
           })
+          // Small delay to ensure state updates before opening player
+          await new Promise(resolve => setTimeout(resolve, 100))
         } catch (err) {
           if (process.env.NODE_ENV === 'development') {
-            console.log('Demo loop creation handled')
+            console.error('Demo loop creation error:', err)
           }
         }
       }
