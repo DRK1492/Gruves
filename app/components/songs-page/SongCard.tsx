@@ -12,6 +12,8 @@ type SongCardProps = {
   openMenuSongId: string | null
   setOpenMenuSongId: (value: string | null) => void
   song: Song
+  showDemoPopup?: boolean
+  onDismissDemo?: () => void
 }
 
 export default function SongCard({
@@ -24,9 +26,12 @@ export default function SongCard({
   openMenuSongId,
   setOpenMenuSongId,
   song,
+  showDemoPopup,
+  onDismissDemo,
 }: SongCardProps) {
   return (
-    <article
+    <div className="relative">
+      <article
       draggable
       onDragStart={() => onDragStart(song.id)}
       onDragEnd={onDragEnd}
@@ -125,5 +130,27 @@ export default function SongCard({
         <div className="song-genres-slot invisible" aria-hidden="true" />
       )}
     </article>
+
+    {showDemoPopup && onDismissDemo && (
+      <div className="absolute -top-20 left-1/2 -translate-x-1/2 z-50">
+        {/* Arrow pointing down to the card */}
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full w-2 h-2 bg-card rotate-45"></div>
+
+        <div className="card p-3 mb-2 w-max">
+          <p className="text-xs font-semibold mb-2">This is a demo song</p>
+          <p className="text-xs muted mb-3 max-w-xs">
+            Explore all features, then add your own or delete this one.
+          </p>
+          <button
+            type="button"
+            onClick={onDismissDemo}
+            className="text-xs button-primary w-full"
+          >
+            Got it
+          </button>
+        </div>
+      </div>
+    )}
+    </div>
   )
 }

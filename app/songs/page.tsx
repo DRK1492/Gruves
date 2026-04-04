@@ -527,22 +527,6 @@ export default function SongsPage() {
     <div className="page">
       {session && showOnboarding && <OnboardingModal onDismiss={dismissOnboarding} />}
 
-      {songs.length === 1 && songs[0].is_demo && !demoBannerDismissed && (
-        <div className="mb-4 p-4 border border-muted/30 rounded-lg bg-card/50 flex items-start justify-between gap-3">
-          <p className="text-sm muted flex-1">
-            This is a demo song so you can explore Gruves. Add your own songs whenever you're ready — or delete this one to start fresh.
-          </p>
-          <button
-            type="button"
-            onClick={dismissDemoBanner}
-            className="text-muted hover:text-foreground transition flex-shrink-0"
-            aria-label="Dismiss"
-          >
-            ×
-          </button>
-        </div>
-      )}
-
       <SongsToolbar
         artistOptions={artistOptions}
         filterArtist={filterArtist}
@@ -584,6 +568,7 @@ export default function SongsPage() {
         songs={songs}
         songsViewMode={songsViewMode}
         statusGroups={statusGroups}
+        onDismissDemo={dismissDemoBanner}
       />
 
       {showAddSongModal && (

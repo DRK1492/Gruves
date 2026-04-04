@@ -17,6 +17,7 @@ type SongsContentProps = {
   songs: Song[]
   songsViewMode: SongsViewMode
   statusGroups: SongStatusGroup[]
+  onDismissDemo?: () => void
 }
 
 export default function SongsContent({
@@ -33,6 +34,7 @@ export default function SongsContent({
   songs,
   songsViewMode,
   statusGroups,
+  onDismissDemo,
 }: SongsContentProps) {
   if (loading) {
     return <p className="text-center">Loading...</p>
@@ -79,6 +81,8 @@ export default function SongsContent({
                     onUpdateStatus={onUpdateStatus}
                     openMenuSongId={openMenuSongId}
                     setOpenMenuSongId={setOpenMenuSongId}
+                    showDemoPopup={song.is_demo && songs.length === 1}
+                    onDismissDemo={onDismissDemo}
                   />
                 ))
               )}
@@ -111,6 +115,8 @@ export default function SongsContent({
                   onUpdateStatus={onUpdateStatus}
                   openMenuSongId={openMenuSongId}
                   setOpenMenuSongId={setOpenMenuSongId}
+                  showDemoPopup={song.is_demo && songs.length === 1}
+                  onDismissDemo={onDismissDemo}
                 />
               ))}
             </div>
