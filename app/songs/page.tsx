@@ -50,6 +50,10 @@ export default function SongsPage() {
     if (typeof window === 'undefined') return 'board'
     return window.localStorage.getItem('songs-view-mode') === 'list' ? 'list' : 'board'
   })
+  const [demoBannerDismissed, setDemoBannerDismissed] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.localStorage.getItem('gruves_demo_banner_dismissed') === '1'
+  })
   const deferredSearchTerm = useDeferredValue(searchTerm)
   const { session } = useSupabaseSession()
 
@@ -135,6 +139,11 @@ export default function SongsPage() {
   const dismissOnboarding = () => {
     window.localStorage.setItem('gt_onboarded', '1')
     setShowOnboarding(false)
+  }
+
+  const dismissDemoBanner = () => {
+    window.localStorage.setItem('gruves_demo_banner_dismissed', '1')
+    setDemoBannerDismissed(true)
   }
 
   const handleAddSetlist = async (e: React.FormEvent) => {
@@ -508,6 +517,22 @@ export default function SongsPage() {
   return (
     <div className="page">
       {session && showOnboarding && <OnboardingModal onDismiss={dismissOnboarding} />}
+
+      {songs.length === 1 && songs[0].is_demo && !demoBannerDismissed && (
+        <div className="mb-4 p-4 border border-muted/30 rounded-lg bg-card/50 flex items-start justify-between gap-3">
+          <p className="text-sm muted flex-1">
+            This is a demo song so you can explore Gruves. Add your own songs whenever you're ready — or delete this one to start fresh.
+          </p>
+          <button
+            type="button"
+            onClick={dismissDemoBanner}
+            className="text-muted hover:text-foreground transition flex-shrink-0"
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       <SongsToolbar
         artistOptions={artistOptions}

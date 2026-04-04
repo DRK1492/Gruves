@@ -38,6 +38,11 @@ export default function SongCard({
           <h3 className="font-semibold text-base truncate">{song.title}</h3>
           <p className="text-sm muted">{song.artist || 'Unknown Artist'}</p>
         </div>
+        {song.is_demo && (
+          <div className="text-xs px-2 py-1 rounded-full bg-purple-900/40 text-purple-300 whitespace-nowrap">
+            Demo
+          </div>
+        )}
         <div className="menu-container">
           <button
             type="button"

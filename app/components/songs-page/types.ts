@@ -11,6 +11,7 @@ export interface Song {
   artist: string
   status: string
   isPending?: boolean
+  is_demo?: boolean
   song_genres?: SongGenre[]
 }
 

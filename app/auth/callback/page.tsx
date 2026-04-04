@@ -15,9 +15,27 @@ export default function AuthCallbackPage() {
       const type = url.searchParams.get('type')
 
       if (code) {
-        await supabase.auth.exchangeCodeForSession(code)
+        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        if (error) {
+          console.error('Code exchange failed:', error)
+          return
+        }
       } else if (tokenHash && type) {
-        await supabase.auth.verifyOtp({ token_hash: tokenHash, type: type as 'signup' | 'recovery' | 'invite' | 'magiclink' | 'email_change' })
+        const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: type as 'signup' | 'recovery' | 'invite' | 'magiclink' | 'email_change' })
+        if (error) {
+          console.error('OTP verification failed:', error)
+          return
+        }
+      } else {
+        console.error('No code or token_hash found in callback URL')
+        return
+      }
+
+      // Attempt to seed demo song for new users (best-effort, non-blocking)
+      try {
+        await fetch('/api/seed-demo', { method: 'POST' })
+      } catch (error) {
+        console.error('Demo seed failed:', error)
       }
 
       router.replace('/')
