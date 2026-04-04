@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export default async function middleware(request: NextRequest) {
-  console.log('[MIDDLEWARE] Processing request:', request.nextUrl.pathname)
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -15,7 +14,6 @@ export default async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          console.log('[MIDDLEWARE] Setting cookies:', cookiesToSet.map(c => c.name))
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
@@ -26,56 +24,12 @@ export default async function middleware(request: NextRequest) {
     }
   )
 
-  // Try getUser() first for server-side JWT validation.
-  // If it returns an error OR throws/times out, fall back to getSession()
-  // (local cookie decode). This handles expired access tokens, network
-  // failures, and Supabase service outages without incorrectly blocking
-  // users who still have a valid refresh token.
-  let user = null
-  let error = null
+  // Refresh the session token if it's nearing expiry. This keeps auth cookies
+  // up-to-date on the server side. Route protection is handled entirely
+  // client-side by AuthGate — keeping redirects out of the middleware avoids
+  // infinite redirect loops caused by cookie-read failures on the Edge Runtime.
+  await supabase.auth.getUser()
 
-  try {
-    const result = await Promise.race([
-      supabase.auth.getUser(),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('getUser timeout')), 5000)
-      )
-    ]) as Awaited<ReturnType<typeof supabase.auth.getUser>>
-
-    user = result.data?.user ?? null
-    error = result.error
-    console.log('[MIDDLEWARE] getUser result:', { userId: user?.id, error: error?.message })
-
-    // getUser() returns {data: null, error: JWTExpired} for expired tokens —
-    // that's a normal return (not a throw), so the catch won't fire.
-    // Fall back to getSession() so users with valid refresh tokens aren't blocked.
-    if (!user || error) {
-      console.log('[MIDDLEWARE] getUser returned no user or error, falling back to getSession')
-      const sessionResult = await supabase.auth.getSession()
-      user = sessionResult.data?.session?.user ?? null
-      error = sessionResult.error
-      console.log('[MIDDLEWARE] getSession fallback:', { userId: user?.id, error: error?.message })
-    }
-  } catch (e) {
-    console.log('[MIDDLEWARE] getUser threw or timed out, falling back to getSession:', (e as Error).message)
-    const sessionResult = await supabase.auth.getSession()
-    user = sessionResult.data?.session?.user ?? null
-    error = sessionResult.error
-    console.log('[MIDDLEWARE] getSession fallback:', { userId: user?.id, error: error?.message })
-  }
-
-  if (!user) {
-    console.log('[MIDDLEWARE] No user found, redirecting to /auth')
-    const url = request.nextUrl.clone()
-    // Preserve the original destination so AuthGate can send the user there
-    // after they authenticate, instead of always bouncing them to /.
-    const next = request.nextUrl.pathname
-    url.pathname = '/auth'
-    url.searchParams.set('next', next)
-    return NextResponse.redirect(url)
-  }
-
-  console.log('[MIDDLEWARE] User authenticated, proceeding')
   return supabaseResponse
 }
 
