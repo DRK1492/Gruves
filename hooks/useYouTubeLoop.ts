@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useEffectEvent, useMemo, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { YOUTUBE_PLAYER_STATE, type YouTubePlayer } from '@/utils/youtubeHelpers'
 
 const DEFAULT_INTERVAL_MS = 200
@@ -48,6 +48,8 @@ export function useYouTubeLoop({
   playerState,
   intervalMs = DEFAULT_INTERVAL_MS,
 }: UseYouTubeLoopOptions) {
+  const playerRef = useRef<YouTubePlayer | null>(null)
+
   const [loopStart, setLoopStart] = useState<number | null>(null)
   const [loopEnd, setLoopEnd] = useState<number | null>(null)
   const [loopEnabled, setLoopEnabled] = useState(false)
@@ -56,6 +58,11 @@ export function useYouTubeLoop({
     DEFAULT_PLAYBACK_RATES
   )
   const [currentTime, setCurrentTime] = useState(0)
+
+  // Keep a ref so that stable callbacks (useCallback with []) always see the latest player
+  useEffect(() => {
+    playerRef.current = player
+  }, [player])
 
   const canLoop = loopStart != null && loopEnd != null && loopStart < loopEnd
   const isLooping = loopEnabled && canLoop
@@ -123,8 +130,9 @@ export function useYouTubeLoop({
   }
 
   const jumpToTime = (seconds: number | null) => {
-    if (!player || seconds == null) return
-    player.seekTo(seconds, true)
+    const p = playerRef.current
+    if (!p || seconds == null) return
+    p.seekTo(seconds, true)
     setCurrentTime(seconds)
   }
 

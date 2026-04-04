@@ -107,9 +107,7 @@ function YouTubePracticePlayerInner({
     if (player && activeSavedLoopId && savedLoops.length > 0) {
       const activeLoop = savedLoops.find(loop => loop.id === activeSavedLoopId)
       if (activeLoop) {
-        // Load the loop markers but don't enable looping yet - let it play through first
-        loadLoop(activeLoop.loopStart, activeLoop.loopEnd, false)
-        // Start playing from the loop start
+        loadLoop(activeLoop.loopStart, activeLoop.loopEnd, true)
         player.playVideo()
       }
     }
