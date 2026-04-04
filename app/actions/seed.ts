@@ -95,9 +95,9 @@ export async function seedDemoSong(userId: string) {
           song_id: songId,
           link_id: linkData.id,
           user_id: userId,
-          name: 'Intro fingerpicking pattern',
-          loop_start: 14.0,
-          loop_end: 48.0,
+          name: 'Guitar riff after the intro',
+          loop_start: 41.0,
+          loop_end: 49.0,
         },
       ])
 
