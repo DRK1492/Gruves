@@ -37,38 +37,19 @@ export default function SetlistNotesSection({
 }: SetlistNotesSectionProps) {
   return (
     <div className="card p-6 mt-6">
-      <div className="section-title">
-        <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-          <path
-            d="M6 5h12v14H6z"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M9 9h6M9 13h6"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-          />
-        </svg>
-        <h2 className="text-xl font-semibold">Setlist Notes</h2>
-      </div>
+      <p className="label mb-3">Setlist Notes</p>
       <div className="section-divider" />
       <NoteEditor
         value={newNote}
         onChange={setNewNote}
         placeholder="Add a note about this setlist..."
-        className="input note-editor w-full mb-2 min-h-[100px]"
+        className="input note-editor w-full mb-3 min-h-[100px]"
       />
-      <button
-        onClick={onAddNote}
-        className="button-primary mb-6"
-      >
-        Save Note
-      </button>
+      <div className="flex justify-end mb-6">
+        <button onClick={onAddNote} className="button-primary button-cta">
+          Save Note
+        </button>
+      </div>
       {notes.length === 0 ? (
         <p className="muted">No notes yet.</p>
       ) : (

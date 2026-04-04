@@ -5,10 +5,9 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../lib/supabaseClient'
 import AddSongModal from '../components/songs-page/AddSongModal'
 import OnboardingModal from '../components/songs-page/OnboardingModal'
-import SetlistsSection from '../components/songs-page/SetlistsSection'
 import SongsContent from '../components/songs-page/SongsContent'
 import SongsToolbar from '../components/songs-page/SongsToolbar'
-import type { Genre, Setlist, Song, SongGenre, SongsViewMode } from '../components/songs-page/types'
+import type { Genre, Song, SongGenre, SongsViewMode } from '../components/songs-page/types'
 import UndoDeleteToast from '../components/songs-page/UndoDeleteToast'
 import { useSupabaseSession } from '../components/SessionProvider'
 import { seedDemoSong } from '../actions/seed'
@@ -31,11 +30,6 @@ export default function SongsPage() {
   const [filterGenreId, setFilterGenreId] = useState('all')
   const [filterArtist, setFilterArtist] = useState('all')
   const [formError, setFormError] = useState('')
-  const [setlists, setSetlists] = useState<Setlist[]>([])
-  const [newSetlistName, setNewSetlistName] = useState('')
-  const [setlistError, setSetlistError] = useState('')
-  const [draggingSongId, setDraggingSongId] = useState<string | null>(null)
-  const [dragOverSetlistId, setDragOverSetlistId] = useState<string | null>(null)
   const [openMenuSongId, setOpenMenuSongId] = useState<string | null>(null)
   const [undoDelete, setUndoDelete] = useState<{
     song: Song
@@ -112,20 +106,6 @@ export default function SongsPage() {
   }, [session])
 
   useEffect(() => {
-    const fetchSetlists = async () => {
-      if (!session) return
-      const { data, error } = await supabase
-        .from('setlists')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .order('name', { ascending: true })
-      if (error) console.log(error)
-      else setSetlists(data as Setlist[])
-    }
-    fetchSetlists()
-  }, [session])
-
-  useEffect(() => {
     return () => {
       if (undoDelete?.timeoutId) clearTimeout(undoDelete.timeoutId)
     }
@@ -197,26 +177,6 @@ export default function SongsPage() {
     }
   }
 
-  const handleAddSetlist = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!session || !newSetlistName.trim()) return
-    setSetlistError('')
-    const { data, error } = await supabase
-      .from('setlists')
-      .insert([{ user_id: session.user.id, name: newSetlistName.trim() }])
-      .select()
-      .single()
-    if (error) {
-      console.log('Error adding setlist:', error)
-      setSetlistError('Could not add setlist. Try a different name.')
-      return
-    }
-    if (data) {
-      setSetlists(prev => [...prev, data as Setlist].sort((a, b) => a.name.localeCompare(b.name)))
-      setNewSetlistName('')
-    }
-  }
-
   const handleAddGenre = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!session || !newGenreName.trim()) return
@@ -259,40 +219,6 @@ export default function SongsPage() {
       setGenreLimitError('')
       return [...prev, genreId]
     })
-  }
-
-  const handleDragStart = (songId: string) => {
-    setDraggingSongId(songId)
-  }
-
-  const handleDragEnd = () => {
-    setDraggingSongId(null)
-    setDragOverSetlistId(null)
-  }
-
-  const handleDropOnSetlist = async (setlistId: string) => {
-    if (!session?.user?.id || !draggingSongId) return
-    const { data: lastItem } = await supabase
-      .from('setlist_songs')
-      .select('position')
-      .eq('setlist_id', setlistId)
-      .eq('user_id', session.user.id)
-      .order('position', { ascending: false })
-      .limit(1)
-
-    const nextPosition = (lastItem?.[0]?.position ?? -1) + 1
-    const { error } = await supabase.from('setlist_songs').insert({
-      setlist_id: setlistId,
-      song_id: draggingSongId,
-      user_id: session.user.id,
-      position: nextPosition
-    })
-    if (error) {
-      console.log('Error adding songs to setlist:', error)
-      return
-    }
-    setDraggingSongId(null)
-    setDragOverSetlistId(null)
   }
 
   const updateSongStatus = async (
@@ -600,8 +526,6 @@ export default function SongsPage() {
         onDelete={songId => {
           void handleDelete(songId)
         }}
-        onDragEnd={handleDragEnd}
-        onDragStart={handleDragStart}
         onGoToSong={goToSong}
         onToggleMenu={songId => setOpenMenuSongId(prev => (prev === songId ? null : songId))}
         onUpdateStatus={updateSongStatus}
@@ -639,20 +563,6 @@ export default function SongsPage() {
           toggleGenre={toggleGenre}
         />
       )}
-
-      <SetlistsSection
-        dragOverSetlistId={dragOverSetlistId}
-        newSetlistName={newSetlistName}
-        onAddSetlist={handleAddSetlist}
-        onDropOnSetlist={setlistId => {
-          void handleDropOnSetlist(setlistId)
-        }}
-        onOpenSetlist={setlistId => router.push(`/setlists/${setlistId}`)}
-        setDragOverSetlistId={setDragOverSetlistId}
-        setNewSetlistName={setNewSetlistName}
-        setlistError={setlistError}
-        setlists={setlists}
-      />
 
       {undoDelete && <UndoDeleteToast onUndo={handleUndoDelete} />}
     </div>

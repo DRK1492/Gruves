@@ -1481,6 +1481,90 @@ a {
   margin: 0.2rem 0;
 }
 
+/* ── Setlist pages ───────────────────────────────────────────── */
+.setlist-add-form {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.setlist-add-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.setlist-add-label {
+  flex-shrink: 0;
+  min-width: 6.5rem;
+}
+
+.setlist-add-btn {
+  flex-shrink: 0;
+}
+
+.setlist-list-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  min-height: 56px;
+}
+
+.setlist-list-icon {
+  flex-shrink: 0;
+  color: var(--accent);
+  opacity: 0.75;
+}
+
+.setlist-list-name {
+  flex: 1;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.setlist-list-count {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.setlist-list-chevron {
+  flex-shrink: 0;
+  color: var(--text-faint);
+}
+
+@media (max-width: 640px) {
+  .setlist-add-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .setlist-add-form .button-primary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .setlist-add-row {
+    flex-wrap: wrap;
+  }
+
+  .setlist-add-label {
+    width: 100%;
+    min-width: unset;
+  }
+
+  .setlist-add-row .input {
+    flex-basis: calc(50% - 0.375rem);
+    min-width: 0;
+  }
+
+  .setlist-add-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 /* ── Global empty-state pattern ─────────────────────────────── */
 .section-empty-state {
   display: flex;

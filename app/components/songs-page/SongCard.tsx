@@ -3,10 +3,7 @@
 import type { Song } from './types'
 
 type SongCardProps = {
-  disableDrag?: boolean
   onDelete: (songId: string) => void
-  onDragEnd: () => void
-  onDragStart: (songId: string) => void
   onGoToSong: (songId: string) => void
   onToggleMenu: (songId: string) => void
   onUpdateStatus: (songId: string, status: 'confident' | 'learning' | 'wishlist') => Promise<void>
@@ -18,10 +15,7 @@ type SongCardProps = {
 }
 
 export default function SongCard({
-  disableDrag,
   onDelete,
-  onDragEnd,
-  onDragStart,
   onGoToSong,
   onToggleMenu,
   onUpdateStatus,
@@ -34,9 +28,6 @@ export default function SongCard({
   return (
     <div className="relative">
       <article
-      draggable={!disableDrag}
-      onDragStart={disableDrag ? undefined : () => onDragStart(song.id)}
-      onDragEnd={disableDrag ? undefined : onDragEnd}
       onClick={() => onGoToSong(song.id)}
       className={`row row-clickable p-2 song-tile overflow-visible${!song.artist ? ' song-tile--no-artist' : ''}`}
     >

@@ -55,7 +55,7 @@ export default function SetlistDetailPage() {
 
       const { data: setlistSongsData, error: setlistSongsError } = await supabase
         .from('setlist_songs')
-        .select('song_id, position, songs(*)')
+        .select('song_id, position, songs(*, song_genres(genre_id, genres(name)))')
         .eq('setlist_id', id)
         .eq('user_id', session.user.id)
         .order('position', { ascending: true, nullsFirst: false })
@@ -349,11 +349,12 @@ export default function SetlistDetailPage() {
     <div className="page">
       <SetlistHeader
         openSetlistMenu={openSetlistMenu}
-        onBack={() => router.push('/songs')}
+        onBack={() => router.push('/setlists')}
         onDelete={handleDeleteSetlist}
         onRename={handleRenameSetlist}
         setOpenSetlistMenu={updater => setOpenSetlistMenu(prev => updater(prev))}
         setlistName={setlistName}
+        songCount={setlistItems.length}
       />
 
       <SetlistSongsSection

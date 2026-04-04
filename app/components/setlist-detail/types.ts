@@ -1,10 +1,18 @@
 import type { Dispatch, SetStateAction } from 'react'
 
+export interface SongGenre {
+  genre_id: string
+  genres: {
+    name: string
+  } | null
+}
+
 export interface Song {
   id: string
   title: string
   artist: string
   status: string
+  song_genres?: SongGenre[]
 }
 
 export interface SetlistSongRow {

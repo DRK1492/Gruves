@@ -8,8 +8,6 @@ type SongsContentProps = {
   filteredSongs: Song[]
   loading: boolean
   onDelete: (songId: string) => void
-  onDragEnd: () => void
-  onDragStart: (songId: string) => void
   onGoToSong: (songId: string) => void
   onToggleMenu: (songId: string) => void
   onUpdateStatus: (songId: string, status: 'confident' | 'learning' | 'wishlist') => Promise<void>
@@ -33,8 +31,6 @@ export default function SongsContent({
   filteredSongs,
   loading,
   onDelete,
-  onDragEnd,
-  onDragStart,
   onGoToSong,
   onToggleMenu,
   onUpdateStatus,
@@ -92,8 +88,6 @@ export default function SongsContent({
                         key={song.id}
                         song={song}
                         onDelete={onDelete}
-                        onDragEnd={onDragEnd}
-                        onDragStart={onDragStart}
                         onGoToSong={onGoToSong}
                         onToggleMenu={onToggleMenu}
                         onUpdateStatus={onUpdateStatus}
@@ -153,10 +147,7 @@ export default function SongsContent({
                 <SongCard
                   key={song.id}
                   song={song}
-                  disableDrag
                   onDelete={onDelete}
-                  onDragEnd={onDragEnd}
-                  onDragStart={onDragStart}
                   onGoToSong={onGoToSong}
                   onToggleMenu={onToggleMenu}
                   onUpdateStatus={onUpdateStatus}
@@ -188,8 +179,6 @@ export default function SongsContent({
                   key={song.id}
                   song={song}
                   onDelete={onDelete}
-                  onDragEnd={onDragEnd}
-                  onDragStart={onDragStart}
                   onGoToSong={onGoToSong}
                   onToggleMenu={onToggleMenu}
                   onUpdateStatus={onUpdateStatus}

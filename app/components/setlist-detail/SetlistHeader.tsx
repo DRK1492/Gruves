@@ -7,6 +7,7 @@ type SetlistHeaderProps = {
   onRename: () => void
   setOpenSetlistMenu: (updater: (prev: boolean) => boolean) => void
   setlistName: string
+  songCount: number
 }
 
 export default function SetlistHeader({
@@ -16,19 +17,20 @@ export default function SetlistHeader({
   onRename,
   setOpenSetlistMenu,
   setlistName,
+  songCount,
 }: SetlistHeaderProps) {
   return (
     <>
-      <div className="mb-4">
-        <button onClick={onBack} className="button-link button-link-large">
-          ← Back to Songs
+      <div className="mb-3">
+        <button onClick={onBack} className="breadcrumb-link">
+          ← Setlists
         </button>
       </div>
 
-      <div className="card p-6 mb-6 flex justify-between items-center">
+      <div className="card p-6 mb-6 flex justify-between items-start">
         <div>
-          <p className="label mb-2">Setlist</p>
-          <h1 className="text-3xl font-semibold tracking-tight">{setlistName}</h1>
+          <h1 className="text-4xl font-bold tracking-tight mb-1">{setlistName}</h1>
+          <p className="muted text-sm">{songCount === 1 ? '1 song' : `${songCount} songs`}</p>
         </div>
         <div className="menu-container" onClick={event => event.stopPropagation()}>
           <button
