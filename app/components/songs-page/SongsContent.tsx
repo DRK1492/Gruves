@@ -61,9 +61,10 @@ export default function SongsContent({
     return (
       <div className="songs-board">
         {statusGroups.map(column => (
-          <section key={column.key} className="songs-col">
+          <section key={column.key} className="songs-col" data-status={column.key}>
             <h2 className="songs-col-header">
-              {column.title} ({column.songs.length})
+              {column.title}
+              <span className="songs-col-count">{column.songs.length}</span>
             </h2>
             <div className="songs-col-body">
               {column.songs.length === 0 ? (

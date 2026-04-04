@@ -1236,7 +1236,10 @@ a {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 0.55rem;
-  overflow: hidden;
+  /* overflow: clip instead of hidden — clips visually but does NOT create a
+     scroll container, preventing the browser from reserving scrollbar width
+     when column content overflows vertically (which ate the right padding). */
+  overflow: clip;
 }
 
 .songs-col-header {
@@ -1254,11 +1257,42 @@ a {
   font-variant-numeric: tabular-nums;
 }
 
+.songs-col[data-status="confident"] {
+  border-top-width: 3px;
+  border-top-color: #4ade80;
+}
+
+.songs-col[data-status="learning"] {
+  border-top-width: 3px;
+  border-top-color: var(--accent);
+}
+
+.songs-col[data-status="wishlist"] {
+  border-top-width: 3px;
+  border-top-color: rgba(255, 255, 255, 0.35);
+}
+
+.songs-col-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
 .songs-col-body {
-  overflow-x: hidden;
-  overflow-y: visible;
+  overflow: visible;
   padding: 0.6rem;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.5rem;
   align-content: start;
 }
@@ -1290,16 +1324,21 @@ a {
   background: var(--surface-strong);
   padding: 6px 10px;
   overflow: visible;
-  min-height: 78px;
+  min-width: 0;
   display: flex;
-  flex-direction: column;
-  transition: background-color 140ms ease, transform 140ms ease, border-color 140ms ease;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 4px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: background-color 140ms ease, transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
 }
 
 .song-tile:hover {
   background: var(--surface);
-  border-color: var(--text-faint);
+  border-color: rgba(245, 185, 66, 0.4);
   transform: translateY(-1px);
+  box-shadow: inset 3px 0 0 var(--accent), 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .song-title {
@@ -1349,41 +1388,54 @@ a {
   overflow: visible;
 }
 
-.song-tile-top {
+.song-tile-left {
   flex: 1;
-  gap: 0.25rem;
-}
-
-.song-tile-top h3 {
-  line-height: 1.05;
-  margin: 0 0 4px 0;
-}
-
-.song-tile-top .muted {
-  margin-top: 0;
-  margin-bottom: 2px;
-  font-size: 0.86rem;
-  line-height: 1.05;
-}
-
-.song-genres-slot {
-  margin-top: 2px;
-  min-height: 16px;
+  min-width: 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
-  align-items: flex-start;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 3px;
 }
 
-.song-genres-slot .badge {
-  font-size: 0.7rem;
-  padding: 1px 6px;
-  letter-spacing: 0.04em;
+.song-tile-title {
+  min-width: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.1;
+  margin: 0 0 3px 0;
+  color: var(--text);
 }
 
-.song-genres-slot .genre-pill {
-  font-size: 0.7rem;
-  padding: 1px 6px;
+.song-tile--no-artist {
+  align-items: center;
+}
+
+.song-tile-right {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: 3px;
+}
+
+.song-tile-artist {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.05;
+  color: var(--text-faint);
+  min-width: 0;
+}
+
+.song-tile-genre-pill {
+  flex-shrink: 0;
+  font-size: 0.62rem;
+  padding: 1px 4px;
+  white-space: nowrap;
+  background: transparent;
+  border-color: var(--text-faint);
+  color: var(--text-faint);
+  line-height: 1.4;
 }
 
 

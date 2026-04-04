@@ -36,18 +36,20 @@ export default function SongCard({
       onDragStart={() => onDragStart(song.id)}
       onDragEnd={onDragEnd}
       onClick={() => onGoToSong(song.id)}
-      className="row row-clickable p-2 song-tile overflow-visible"
+      className={`row row-clickable p-2 song-tile overflow-visible${!song.artist ? ' song-tile--no-artist' : ''}`}
     >
-      <div className="flex items-start justify-between gap-3 song-tile-top">
-        <div className="min-w-0">
-          <h3 className="font-semibold text-base truncate">{song.title}</h3>
-          <p className="text-sm muted">{song.artist || 'Unknown Artist'}</p>
-        </div>
+      {/* Left column: title + artist */}
+      <div className="song-tile-left">
+        <h3 className="font-bold truncate song-tile-title">{song.title}</h3>
+        {song.artist && <p className="song-tile-artist">{song.artist}</p>}
         {song.is_demo && (
-          <div className="text-xs px-2 py-1 rounded-full bg-purple-900/40 text-purple-300 whitespace-nowrap">
+          <div className="text-xs px-1.5 py-0.5 rounded-full bg-purple-900/40 text-purple-300 whitespace-nowrap self-start">
             Demo
           </div>
         )}
+      </div>
+      {/* Right column: three-dot menu on top, genre pill directly below */}
+      <div className="song-tile-right">
         <div className="menu-container">
           <button
             type="button"
@@ -117,18 +119,13 @@ export default function SongCard({
             </div>
           )}
         </div>
+        {(() => {
+          const firstGenre = (song.song_genres || []).find(g => g.genres?.name)
+          return firstGenre ? (
+            <span className="genre-pill song-tile-genre-pill">{firstGenre.genres!.name}</span>
+          ) : null
+        })()}
       </div>
-      {(song.song_genres || []).length > 0 ? (
-        <div className="song-genres-slot">
-          {(song.song_genres || []).slice(0, 3).map(genre => (
-            <span key={genre.genre_id} className="genre-pill">
-              {genre.genres?.name ?? 'Unknown'}
-            </span>
-          ))}
-        </div>
-      ) : (
-        <div className="song-genres-slot invisible" aria-hidden="true" />
-      )}
     </article>
 
     {showDemoPopup && onDismissDemo && (
