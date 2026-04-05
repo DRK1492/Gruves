@@ -1255,6 +1255,18 @@ a {
   font-variant-numeric: tabular-nums;
 }
 
+.songs-col[data-status="confident"] .songs-col-header {
+  color: rgba(187, 247, 208, 0.9);
+}
+
+.songs-col[data-status="learning"] .songs-col-header {
+  color: rgba(251, 191, 36, 0.95);
+}
+
+.songs-col[data-status="wishlist"] .songs-col-header {
+  color: rgba(226, 232, 240, 0.95);
+}
+
 .songs-col[data-status="confident"] {
   border-top-width: 3px;
   border-top-color: #4ade80;
@@ -1286,6 +1298,18 @@ a {
   line-height: 1;
 }
 
+.songs-col[data-status="confident"] .songs-col-count {
+  color: rgba(187, 247, 208, 0.9);
+}
+
+.songs-col[data-status="learning"] .songs-col-count {
+  color: rgba(251, 191, 36, 0.95);
+}
+
+.songs-col[data-status="wishlist"] .songs-col-count {
+  color: rgba(226, 232, 240, 0.95);
+}
+
 .songs-col-body {
   overflow: visible;
   padding: 0.6rem;
@@ -1303,11 +1327,48 @@ a {
 .songs-list-section {
   display: grid;
   gap: 0.55rem;
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
-.songs-list-label {
-  display: inline-flex;
-  width: fit-content;
+/* Compound selector beats .label (0,2,0 > 0,1,0) — prevents specificity clash */
+.label.songs-list-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  padding: 1rem 1rem;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  border: 2px solid transparent;
+  border-radius: 4px;
+}
+
+.songs-list-section:first-child .label.songs-list-label {
+  margin-top: 0;
+}
+
+.label.songs-list-label.status-confident {
+  color: rgba(187, 247, 208, 0.9);
+  background: linear-gradient(to right, rgba(52, 211, 153, 0.04), rgba(52, 211, 153, 0.14) 50%, rgba(52, 211, 153, 0.04));
+  border-color: rgba(52, 211, 153, 0.28);
+}
+
+.label.songs-list-label.status-learning {
+  color: rgba(251, 191, 36, 0.95);
+  background: linear-gradient(to right, rgba(245, 185, 66, 0.04), rgba(245, 185, 66, 0.14) 50%, rgba(245, 185, 66, 0.04));
+  border-color: rgba(245, 185, 66, 0.28);
+}
+
+.label.songs-list-label.status-wishlist {
+  color: rgba(226, 232, 240, 0.95);
+  background: linear-gradient(to right, rgba(226, 232, 240, 0.02), rgba(226, 232, 240, 0.08) 50%, rgba(226, 232, 240, 0.02));
+  border-color: rgba(226, 232, 240, 0.18);
 }
 
 .songs-list-grid {
