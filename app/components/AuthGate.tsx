@@ -4,7 +4,8 @@ import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useSupabaseSession } from './SessionProvider'
 
-const isPublicPath = (pathname: string) => pathname === '/' || pathname.startsWith('/auth')
+const isPublicPath = (pathname: string) =>
+  pathname === '/' || pathname.startsWith('/auth') || pathname === '/privacy' || pathname === '/terms'
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()

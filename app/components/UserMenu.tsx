@@ -57,7 +57,7 @@ export default function UserMenu() {
           <button type="button" className="menu-item" onClick={() => handleNavigate('/settings')}>
             Settings
           </button>
-          <button type="button" className="menu-item" onClick={handleLogout}>
+          <button type="button" className="menu-item menu-danger" onClick={handleLogout}>
             Log out
           </button>
         </div>
