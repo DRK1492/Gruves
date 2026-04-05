@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Settings } from 'lucide-react'
 import { supabase } from '../../lib/supabaseClient'
 import { useSupabaseSession } from './SessionProvider'
 
@@ -45,21 +46,7 @@ export default function UserMenu() {
         }}
         aria-label="Settings"
       >
-        <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-          <path
-            d="M12 8.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7z"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-          />
-          <path
-            d="M4.7 12a7.3 7.3 0 0 1 .07-1l-1.9-1.1 1.7-3 2.1.7a7.6 7.6 0 0 1 1.7-1l.3-2.2h3.4l.3 2.2a7.6 7.6 0 0 1 1.7 1l2.1-.7 1.7 3-1.9 1.1a7.3 7.3 0 0 1 0 2l1.9 1.1-1.7 3-2.1-.7a7.6 7.6 0 0 1-1.7 1l-.3 2.2h-3.4l-.3-2.2a7.6 7.6 0 0 1-1.7-1l-2.1.7-1.7-3 1.9-1.1a7.3 7.3 0 0 1-.07-1z"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.2"
-            strokeLinejoin="round"
-          />
-        </svg>
+        <Settings size={18} />
       </button>
       {open && (
         <div className="menu" onClick={event => event.stopPropagation()}>

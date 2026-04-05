@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Music, ListMusic } from 'lucide-react'
 import UserMenu from './UserMenu'
 import { useSupabaseSession } from './SessionProvider'
 
@@ -25,27 +26,11 @@ export default function AppHeader() {
           {!hideTopNav && (
             <nav className="app-nav">
               <Link href="/songs" className="app-nav-link">
-                <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-                  <path
-                    d="M5 6h14M5 12h14M5 18h14"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    strokeLinecap="round"
-                  />
-                </svg>
+                <Music size={16} />
                 Songs
               </Link>
               <Link href="/setlists" className="app-nav-link">
-                <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-                  <path
-                    d="M7 6h10M7 12h10M7 18h6"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    strokeLinecap="round"
-                  />
-                </svg>
+                <ListMusic size={16} />
                 Setlists
               </Link>
             </nav>

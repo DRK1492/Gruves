@@ -1218,9 +1218,7 @@ a {
 
 .status-wishlist {
   border-color: rgba(226, 232, 240, 0.18);
-  color: rgba(226, 232, 240, 0.55);
-  opacity: 0.6;
-  filter: grayscale(1);
+  color: rgba(226, 232, 240, 0.95);
 }
 
 .songs-board {
