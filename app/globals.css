@@ -2762,7 +2762,8 @@ a {
   padding-top: 0.05rem;
 }
 
-.think-note-card:hover .think-note-actions {
+.think-note-card:hover .think-note-actions,
+.row:hover .think-note-actions {
   opacity: 1;
 }
 

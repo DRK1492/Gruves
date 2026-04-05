@@ -30,7 +30,6 @@ export default function SetlistDetailPage() {
   const [savingOrder, setSavingOrder] = useState(false)
   const [openSetlistMenu, setOpenSetlistMenu] = useState(false)
   const [openSongMenuId, setOpenSongMenuId] = useState<string | null>(null)
-  const [openNoteMenuId, setOpenNoteMenuId] = useState<string | null>(null)
   const { session } = useSupabaseSession()
 
   useEffect(() => {
@@ -106,7 +105,6 @@ export default function SetlistDetailPage() {
       if (target?.closest('.menu-container')) return
       setOpenSetlistMenu(false)
       setOpenSongMenuId(null)
-      setOpenNoteMenuId(null)
     }
     document.addEventListener('click', handleDocumentClick)
     return () => document.removeEventListener('click', handleDocumentClick)
@@ -389,11 +387,9 @@ export default function SetlistDetailPage() {
         onDeleteNote={handleDeleteNote}
         onEditNote={handleEditNote}
         onUpdateNote={handleUpdateNote}
-        openNoteMenuId={openNoteMenuId}
         setEditingNoteContent={setEditingNoteContent}
         setEditingNoteId={setEditingNoteId}
         setNewNote={setNewNote}
-        setOpenNoteMenuId={updater => setOpenNoteMenuId(prev => updater(prev))}
       />
     </div>
   )

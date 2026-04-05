@@ -22,8 +22,14 @@ export default function NoteForm({
   setPdfId,
   setRecordingId,
 }: NoteFormProps) {
+  const handleBlur = (e: React.FocusEvent<HTMLDivElement>) => {
+    if (onCancel && !e.currentTarget.contains(e.relatedTarget)) {
+      onCancel()
+    }
+  }
+
   return (
-    <div className={className}>
+    <div className={className} onBlur={handleBlur}>
       <NoteEditor
         value={value}
         onChange={onChange}

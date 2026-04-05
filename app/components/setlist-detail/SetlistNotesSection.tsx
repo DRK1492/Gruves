@@ -13,11 +13,9 @@ type SetlistNotesSectionProps = {
   onDeleteNote: (noteId: string) => void
   onEditNote: (note: SetlistNote) => void
   onUpdateNote: () => void
-  openNoteMenuId: string | null
   setEditingNoteContent: (value: string) => void
   setEditingNoteId: (value: string | null) => void
   setNewNote: (value: string) => void
-  setOpenNoteMenuId: (updater: (prev: string | null) => string | null) => void
 }
 
 export default function SetlistNotesSection({
@@ -29,11 +27,9 @@ export default function SetlistNotesSection({
   onDeleteNote,
   onEditNote,
   onUpdateNote,
-  openNoteMenuId,
   setEditingNoteContent,
   setEditingNoteId,
   setNewNote,
-  setOpenNoteMenuId,
 }: SetlistNotesSectionProps) {
   return (
     <div className="card p-6 mt-6">
@@ -45,8 +41,8 @@ export default function SetlistNotesSection({
         placeholder="Add a note about this setlist..."
         className="input note-editor w-full mb-3 min-h-[100px]"
       />
-      <div className="flex justify-end mb-6">
-        <button onClick={onAddNote} className="button-primary button-cta">
+      <div className="flex gap-2 mb-6">
+        <button onClick={onAddNote} className="button-primary" style={{ padding: '0.28rem 0.7rem', fontSize: '0.8rem' }}>
           Save Note
         </button>
       </div>
@@ -57,20 +53,29 @@ export default function SetlistNotesSection({
           {notes.map(note => (
             <li
               key={note.id}
-              className={`row flex justify-between items-start ${openNoteMenuId === note.id ? 'row-menu-open' : ''}`}
+              className="row flex justify-between items-start"
             >
               {editingNoteId === note.id ? (
-                <div className="w-full">
+                <div
+                  className="w-full"
+                  onBlur={e => {
+                    if (!e.currentTarget.contains(e.relatedTarget)) {
+                      setEditingNoteId(null)
+                      setEditingNoteContent('')
+                    }
+                  }}
+                >
                   <NoteEditor
                     value={editingNoteContent}
                     onChange={setEditingNoteContent}
                     placeholder="Edit note..."
                     className="input note-editor w-full mb-2 min-h-[100px]"
                   />
-                  <div className="flex gap-3">
+                  <div className="flex gap-2">
                     <button
                       onClick={onUpdateNote}
                       className="button-primary"
+                      style={{ padding: '0.28rem 0.7rem', fontSize: '0.8rem' }}
                     >
                       Save
                     </button>
@@ -80,6 +85,7 @@ export default function SetlistNotesSection({
                         setEditingNoteContent('')
                       }}
                       className="button-ghost"
+                      style={{ padding: '0.28rem 0.6rem', fontSize: '0.8rem' }}
                     >
                       Cancel
                     </button>
@@ -90,42 +96,27 @@ export default function SetlistNotesSection({
                   <div className="note-content flex-1">
                     <NoteContent text={note.content} />
                   </div>
-                  <div className="menu-container" onClick={event => event.stopPropagation()}>
+                  <div className="think-note-actions" onClick={e => e.stopPropagation()}>
                     <button
                       type="button"
-                      className="button-ghost menu-trigger"
-                      onClick={event => {
-                        event.stopPropagation()
-                        setOpenNoteMenuId(prev => (prev === note.id ? null : note.id))
-                      }}
+                      className="listen-link-action-btn"
+                      title="Edit"
+                      onClick={() => onEditNote(note)}
                     >
-                      <span className="menu-dots" aria-hidden="true">⋯</span>
-                      <span className="sr-only">Note actions</span>
+                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" strokeWidth="1.75" stroke="currentColor" aria-hidden="true">
+                        <path d="M11.013 1.427a1.75 1.75 0 012.474 0l1.086 1.086a1.75 1.75 0 010 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 01-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61z" strokeLinejoin="round"/>
+                      </svg>
                     </button>
-                    {openNoteMenuId === note.id && (
-                      <div className="menu" onClick={event => event.stopPropagation()}>
-                        <button
-                          type="button"
-                          className="menu-item"
-                          onClick={() => {
-                            onEditNote(note)
-                            setOpenNoteMenuId(() => null)
-                          }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="menu-item menu-danger"
-                          onClick={() => {
-                            onDeleteNote(note.id)
-                            setOpenNoteMenuId(() => null)
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    )}
+                    <button
+                      type="button"
+                      className="listen-link-action-btn listen-link-action-danger"
+                      title="Delete"
+                      onClick={() => onDeleteNote(note.id)}
+                    >
+                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" strokeWidth="1.75" stroke="currentColor" aria-hidden="true">
+                        <path d="M6.5 1.75a.25.25 0 01.25-.25h2.5a.25.25 0 01.25.25V3h-3V1.75zm4.5 0V3h2.25a.75.75 0 010 1.5H2.75a.75.75 0 010-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75zM4.496 6.675a.75.75 0 10-1.492.15l.66 6.6A1.75 1.75 0 005.405 15h5.19a1.75 1.75 0 001.741-1.575l.66-6.6a.75.75 0 00-1.492-.15l-.66 6.6a.25.25 0 01-.249.225H5.405a.25.25 0 01-.249-.225l-.66-6.6z" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
                   </div>
                 </>
               )}
