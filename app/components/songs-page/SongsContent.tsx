@@ -24,7 +24,7 @@ type SongsContentProps = {
 const COLUMN_ACCENTS: Record<string, string> = {
   confident: '#4ade80',
   learning: 'var(--accent)',
-  wishlist: 'rgba(255, 255, 255, 0.9)',
+  wishlist: '#ffffff',
 }
 
 export default function SongsContent({

@@ -1269,7 +1269,7 @@ a {
 
 .songs-col[data-status="wishlist"] {
   border-top-width: 3px;
-  border-top-color: rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
 }
 
 .songs-col-count {
