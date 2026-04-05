@@ -29,6 +29,7 @@ export default function SongCard({
     <div className="relative">
       <article
       onClick={() => onGoToSong(song.id)}
+      data-status={song.status}
       className={`row row-clickable p-2 song-tile overflow-visible${!song.artist ? ' song-tile--no-artist' : ''}`}
     >
       {/* Left column: title + artist */}

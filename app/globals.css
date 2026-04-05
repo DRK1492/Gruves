@@ -1393,11 +1393,15 @@ a {
   transition: background-color 140ms ease, transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
 }
 
+.song-tile[data-status="confident"] { --tile-accent: #4ade80; --tile-accent-border: rgba(74, 222, 128, 0.4); }
+.song-tile[data-status="learning"]  { --tile-accent: var(--accent); --tile-accent-border: rgba(245, 185, 66, 0.4); }
+.song-tile[data-status="wishlist"]  { --tile-accent: #ffffff; --tile-accent-border: rgba(255, 255, 255, 0.35); }
+
 .song-tile:hover {
   background: var(--surface);
-  border-color: rgba(245, 185, 66, 0.4);
+  border-color: var(--tile-accent-border, rgba(245, 185, 66, 0.4));
   transform: translateY(-1px);
-  box-shadow: inset 3px 0 0 var(--accent), 0 4px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: inset 3px 0 0 var(--tile-accent, var(--accent)), 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .song-title {
