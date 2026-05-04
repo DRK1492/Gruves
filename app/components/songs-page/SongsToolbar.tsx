@@ -1,6 +1,7 @@
 'use client'
 
-import type { Genre, SongsViewMode } from './types'
+import { ArrowUpDown } from 'lucide-react'
+import type { Genre, SortPreference, SongsViewMode } from './types'
 
 type SongsToolbarProps = {
   artistOptions: string[]
@@ -16,7 +17,9 @@ type SongsToolbarProps = {
   setFilterStatus: (value: string) => void
   setSearchTerm: (value: string) => void
   setSongsViewMode: (value: SongsViewMode) => void
+  setSortPreference: (value: SortPreference) => void
   songsViewMode: SongsViewMode
+  sortPreference: SortPreference
 }
 
 export default function SongsToolbar({
@@ -33,13 +36,27 @@ export default function SongsToolbar({
   setFilterStatus,
   setSearchTerm,
   setSongsViewMode,
+  setSortPreference,
   songsViewMode,
+  sortPreference,
 }: SongsToolbarProps) {
   return (
     <>
       <div className="page-header">
         <h1 className="text-3xl font-semibold tracking-tight">Your Song Board</h1>
         <div className="flex items-center gap-2">
+          <div className="relative flex items-center gap-1 text-sm text-[var(--text-muted)]">
+            <ArrowUpDown size={14} className="shrink-0 opacity-60" />
+            <select
+              value={sortPreference}
+              onChange={e => setSortPreference(e.target.value as SortPreference)}
+              className="bg-transparent border-none outline-none cursor-pointer text-[var(--text-muted)] hover:text-[var(--text)] transition-colors pr-1 appearance-none"
+            >
+              <option value="default">Default</option>
+              <option value="newest">Newly added</option>
+              <option value="most_viewed">Most viewed</option>
+            </select>
+          </div>
           <div className="view-toggle">
             <button
               type="button"

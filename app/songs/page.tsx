@@ -7,7 +7,7 @@ import AddSongModal from '../components/songs-page/AddSongModal'
 import OnboardingModal from '../components/songs-page/OnboardingModal'
 import SongsContent from '../components/songs-page/SongsContent'
 import SongsToolbar from '../components/songs-page/SongsToolbar'
-import type { Genre, Song, SongGenre, SongsViewMode } from '../components/songs-page/types'
+import type { Genre, Song, SongGenre, SortPreference, SongsViewMode } from '../components/songs-page/types'
 import UndoDeleteToast from '../components/songs-page/UndoDeleteToast'
 import { useSupabaseSession } from '../components/SessionProvider'
 import { seedDemoSong } from '../actions/seed'
@@ -46,6 +46,7 @@ export default function SongsPage() {
     if (typeof window === 'undefined') return 'board'
     return window.localStorage.getItem('songs-view-mode') === 'list' ? 'list' : 'board'
   })
+  const [sortPreference, setSortPreference] = useState<SortPreference>('default')
   const deferredSearchTerm = useDeferredValue(searchTerm)
   const { session } = useSupabaseSession()
 
@@ -140,6 +141,21 @@ export default function SongsPage() {
     if (typeof window === 'undefined') return
     window.localStorage.setItem('songs-view-mode', songsViewMode)
   }, [songsViewMode])
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('gruves_sort_preference')
+      if (saved === 'newest' || saved === 'most_viewed') {
+        setSortPreference(saved)
+      }
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('gruves_sort_preference', sortPreference)
+    } catch {}
+  }, [sortPreference])
 
   // Derived onboarding state — both popups are suppressed once the user has a real song
   const hasRealSongs = songs.some(s => !s.is_demo)
@@ -455,14 +471,25 @@ export default function SongsPage() {
     })
   }, [deferredSearchTerm, filterArtist, filterGenreId, filterStatus, songs])
 
-  const songsByStatus = useMemo(
-    () => ({
-      confident: filteredSongs.filter(song => song.status === 'confident'),
-      learning: filteredSongs.filter(song => song.status === 'learning'),
-      wishlist: filteredSongs.filter(song => song.status === 'wishlist')
-    }),
-    [filteredSongs]
-  )
+  const songsByStatus = useMemo(() => {
+    const sort = (arr: Song[]) => {
+      if (sortPreference === 'newest') {
+        return [...arr].sort(
+          (a, b) =>
+            new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()
+        )
+      }
+      if (sortPreference === 'most_viewed') {
+        return [...arr].sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0))
+      }
+      return arr
+    }
+    return {
+      confident: sort(filteredSongs.filter(song => song.status === 'confident')),
+      learning: sort(filteredSongs.filter(song => song.status === 'learning')),
+      wishlist: sort(filteredSongs.filter(song => song.status === 'wishlist'))
+    }
+  }, [filteredSongs, sortPreference])
 
   const statusGroups = useMemo(
     () => [
@@ -517,7 +544,9 @@ export default function SongsPage() {
         setFilterStatus={setFilterStatus}
         setSearchTerm={setSearchTerm}
         setSongsViewMode={setSongsViewMode}
+        setSortPreference={setSortPreference}
         songsViewMode={songsViewMode}
+        sortPreference={sortPreference}
       />
 
       <SongsContent

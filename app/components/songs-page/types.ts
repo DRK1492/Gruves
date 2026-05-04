@@ -13,7 +13,11 @@ export interface Song {
   isPending?: boolean
   is_demo?: boolean
   song_genres?: SongGenre[]
+  created_at?: string
+  view_count?: number
 }
+
+export type SortPreference = 'default' | 'newest' | 'most_viewed'
 
 export interface Genre {
   id: string
