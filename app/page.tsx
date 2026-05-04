@@ -228,25 +228,25 @@ export default function Home() {
         <p className="muted mb-4">Confidence % based on songs marked as known.</p>
 
         <div className="mb-5">
-          <p className="label">Confidence %</p>
+          <p className="label [[data-mode='light']_&]:text-gray-500">Confidence %</p>
           <p className="text-5xl font-semibold tracking-tight">{confidencePct}%</p>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
           <div className="card p-3">
-            <p className="label">Total Songs</p>
+            <p className="label [[data-mode='light']_&]:text-gray-500">Total Songs</p>
             <p className="text-2xl font-semibold">{totalCount}</p>
           </div>
           <div className="card p-3">
-            <p className="label">Confident (known)</p>
+            <p className="label [[data-mode='light']_&]:text-gray-500">Confident (known)</p>
             <p className="text-2xl font-semibold">{confidentCount}</p>
           </div>
           <div className="card p-3">
-            <p className="label">Learning</p>
+            <p className="label [[data-mode='light']_&]:text-gray-500">Learning</p>
             <p className="text-2xl font-semibold">{learningCount}</p>
           </div>
           <div className="card p-3">
-            <p className="label">Wishlist</p>
+            <p className="label [[data-mode='light']_&]:text-gray-500">Wishlist</p>
             <p className="text-2xl font-semibold">{wishlistCount}</p>
           </div>
         </div>
@@ -261,10 +261,10 @@ export default function Home() {
           <Link className="button-primary w-40 text-center" href="/songs">
             Go To Your Song Board
           </Link>
-          <Link className="button-ghost w-40 text-center" href="/songs?add=1">
+          <Link className="button-ghost w-40 text-center [[data-mode='light']_&]:border-gray-400" href="/songs?add=1">
             Add Song
           </Link>
-          <Link className="button-ghost w-40 text-center" href="/setlists">
+          <Link className="button-ghost w-40 text-center [[data-mode='light']_&]:border-gray-400" href="/setlists">
             Setlists
           </Link>
         </div>

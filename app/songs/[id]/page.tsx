@@ -189,6 +189,7 @@ export default function SongDetailPage() {
   const pdfClickTimeouts = useRef<Record<string, number>>({})
   const skipLinkRowClickRef = useRef(false)
   const skipPdfRowClickRef = useRef(false)
+  const viewCountTrackedRef = useRef(false)
   const pdfPreviewRef = useRef<HTMLDivElement | null>(null)
   const youtubePreviewRef = useRef<HTMLDivElement | null>(null)
   const songHeaderCardRef = useRef<HTMLDivElement | null>(null)
@@ -417,6 +418,32 @@ export default function SongDetailPage() {
 
     fetchData()
   }, [id, session])
+
+  useEffect(() => {
+    if (!song?.id || viewCountTrackedRef.current) return
+    viewCountTrackedRef.current = true
+
+    const trackView = async () => {
+      try {
+        const { data: current } = await supabase
+          .from('songs')
+          .select('view_count')
+          .eq('id', song.id)
+          .single()
+
+        if (current) {
+          await supabase
+            .from('songs')
+            .update({ view_count: (current.view_count ?? 0) + 1 })
+            .eq('id', song.id)
+        }
+      } catch (err) {
+        console.error('Failed to track view count:', err)
+      }
+    }
+
+    trackView()
+  }, [song?.id])
 
   useEffect(() => {
     const handleDocumentClick = (event: MouseEvent) => {

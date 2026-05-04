@@ -183,7 +183,7 @@ export default function SettingsPage() {
           </p>
           <button
             type="button"
-            className="button-ghost"
+            className="button-ghost [[data-mode='light']_&]:border-gray-400"
             onClick={handlePasswordReset}
             disabled={resetLoading}
           >

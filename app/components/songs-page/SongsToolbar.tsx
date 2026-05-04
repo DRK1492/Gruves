@@ -43,14 +43,14 @@ export default function SongsToolbar({
           <div className="view-toggle">
             <button
               type="button"
-              className={songsViewMode === 'board' ? 'view-toggle-active' : ''}
+              className={songsViewMode === 'board' ? 'view-toggle-active' : "[[data-mode='light']_&]:!text-gray-600"}
               onClick={() => setSongsViewMode('board')}
             >
               Board
             </button>
             <button
               type="button"
-              className={songsViewMode === 'list' ? 'view-toggle-active' : ''}
+              className={songsViewMode === 'list' ? 'view-toggle-active' : "[[data-mode='light']_&]:!text-gray-600"}
               onClick={() => setSongsViewMode('list')}
             >
               List
@@ -73,7 +73,7 @@ export default function SongsToolbar({
             placeholder="Search title or artist..."
             value={searchTerm}
             onChange={event => setSearchTerm(event.target.value)}
-            className="input md:col-span-2"
+            className="input md:col-span-2 [[data-mode='light']_&]:bg-white [[data-mode='light']_&]:border-gray-300 [[data-mode='light']_&]:placeholder:text-gray-400"
           />
           <select
             value={filterStatus}

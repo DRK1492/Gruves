@@ -91,7 +91,7 @@ export default function SetlistsPage() {
           placeholder="Setlist name"
           value={newSetlistName}
           onChange={e => setNewSetlistName(e.target.value)}
-          className="input flex-1"
+          className="input flex-1 [[data-mode='light']_&]:bg-white [[data-mode='light']_&]:border-gray-300 [[data-mode='light']_&]:placeholder:text-gray-400"
         />
         <button type="submit" className="button-primary button-cta">
           Add
