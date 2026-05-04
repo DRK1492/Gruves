@@ -1480,6 +1480,12 @@ export default function SongDetailPage() {
   if (loadError) return <p className="p-6 text-red-600">{loadError}</p>
   if (!song) return <p className="p-6">Loading...</p>
   const songStatusLabel = song.status.charAt(0).toUpperCase() + song.status.slice(1)
+  const statusLightTextClass: Record<string, string> = {
+    confident: "[[data-mode='light']_&]:!text-green-700",
+    known: "[[data-mode='light']_&]:!text-green-700",
+    learning: "[[data-mode='light']_&]:!text-orange-700",
+    wishlist: "[[data-mode='light']_&]:!text-amber-700",
+  }
 
   return (
     <div className="page">
@@ -1507,7 +1513,7 @@ export default function SongDetailPage() {
           <>
             {/* Top bar: status pill left, actions right */}
             <div className="song-header-topbar">
-              <span className={`song-header-status status-${song.status}`}>{songStatusLabel}</span>
+              <span className={`song-header-status status-${song.status} ${statusLightTextClass[song.status] ?? ''}`}>{songStatusLabel}</span>
               <div
                 ref={songHeaderMenuRef}
                 className="song-header-actions-right"

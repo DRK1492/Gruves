@@ -6,6 +6,7 @@ import {
   formatYouTubeTime,
   getYouTubeVideoId,
   loadYouTubeIframeApi,
+  YOUTUBE_PLAYER_STATE,
   type YouTubePlayer,
 } from '@/utils/youtubeHelpers'
 
@@ -23,6 +24,208 @@ type YouTubePracticePlayerProps = {
   onDeleteLoop?: (loopId: string) => Promise<void> | void
   onRenameLoop?: (loopId: string, name: string) => Promise<void> | void
   onSaveLoop?: (loop: { name: string; loopStart: number; loopEnd: number }) => Promise<void> | void
+}
+
+// ── A/B Scrub Timeline ────────────────────────────────────────────────────────
+
+type ABScrubTimelineProps = {
+  duration: number
+  loopStart: number | null
+  loopEnd: number | null
+  player: YouTubePlayer | null
+  onChangeA: (v: number) => void
+  onChangeB: (v: number) => void
+}
+
+function ABScrubTimeline({
+  duration,
+  loopStart,
+  loopEnd,
+  player,
+  onChangeA,
+  onChangeB,
+}: ABScrubTimelineProps) {
+  const trackRef = useRef<HTMLDivElement>(null)
+  const dragRef = useRef<{ handle: 'a' | 'b'; wasPlaying: boolean } | null>(null)
+  // Keep latest A/B in refs so pointer-event handlers never read stale closure values
+  const latestARef = useRef(loopStart)
+  const latestBRef = useRef(loopEnd)
+
+  useEffect(() => { latestARef.current = loopStart }, [loopStart])
+  useEffect(() => { latestBRef.current = loopEnd }, [loopEnd])
+
+  if (duration <= 0) return null
+
+  const clampTime = (v: number) => Math.max(0, Math.min(duration, v))
+
+  const posToTime = (clientX: number): number => {
+    const track = trackRef.current
+    if (!track) return 0
+    const rect = track.getBoundingClientRect()
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    return ratio * duration
+  }
+
+  const aPct = loopStart != null ? (loopStart / duration) * 100 : null
+  const bPct = loopEnd != null ? (loopEnd / duration) * 100 : null
+
+  const handlePointerDown = (handle: 'a' | 'b') => (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    let wasPlaying = false
+    try { wasPlaying = player?.getPlayerState() === YOUTUBE_PLAYER_STATE.PLAYING } catch {}
+    if (wasPlaying) { try { player?.pauseVideo() } catch {} }
+    dragRef.current = { handle, wasPlaying }
+  }
+
+  const handlePointerMove = (handle: 'a' | 'b') => (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragRef.current || dragRef.current.handle !== handle) return
+    const newTime = clampTime(posToTime(e.clientX))
+    if (handle === 'a') {
+      const b = latestBRef.current
+      if (b != null && newTime >= b) return
+      latestARef.current = newTime
+      onChangeA(newTime)
+      try { player?.seekTo(newTime, true) } catch {}
+    } else {
+      const a = latestARef.current
+      if (a != null && newTime <= a) return
+      latestBRef.current = newTime
+      onChangeB(newTime)
+      try { player?.seekTo(newTime, true) } catch {}
+    }
+  }
+
+  const handlePointerUp = (handle: 'a' | 'b') => (_e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragRef.current || dragRef.current.handle !== handle) return
+    const { wasPlaying } = dragRef.current
+    dragRef.current = null
+    if (wasPlaying) { try { player?.playVideo() } catch {} }
+    // No DB write on drag end — drag is a scratchpad; re-click the chip to restore
+  }
+
+  const handleNudge = (handle: 'a' | 'b', delta: number) => {
+    if (handle === 'a') {
+      if (loopStart == null) return
+      const newA = clampTime(loopStart + delta)
+      if (loopEnd != null && newA >= loopEnd) return
+      latestARef.current = newA
+      onChangeA(newA)
+      try { player?.seekTo(newA, true) } catch {}
+    } else {
+      if (loopEnd == null) return
+      const newB = clampTime(loopEnd + delta)
+      if (loopStart != null && newB <= loopStart) return
+      latestBRef.current = newB
+      onChangeB(newB)
+      try { player?.seekTo(newB, true) } catch {}
+    }
+  }
+
+  return (
+    <div className="ab-timeline">
+      {/* Draggable track */}
+      <div className="ab-timeline-track" ref={trackRef}>
+        {aPct != null && bPct != null && (
+          <div
+            className="ab-timeline-band"
+            style={{ left: `${aPct}%`, width: `${bPct - aPct}%` }}
+          />
+        )}
+        {aPct != null && (
+          <div
+            className="ab-timeline-handle ab-timeline-handle-a"
+            style={{ left: `${aPct}%` }}
+            onPointerDown={handlePointerDown('a')}
+            onPointerMove={handlePointerMove('a')}
+            onPointerUp={handlePointerUp('a')}
+            role="slider"
+            aria-label="Loop start (A)"
+            aria-valuenow={loopStart ?? 0}
+            aria-valuemin={0}
+            aria-valuemax={duration}
+            title={`A: ${formatYouTubeTime(loopStart)} — drag to adjust`}
+          />
+        )}
+        {bPct != null && (
+          <div
+            className="ab-timeline-handle ab-timeline-handle-b"
+            style={{ left: `${bPct}%` }}
+            onPointerDown={handlePointerDown('b')}
+            onPointerMove={handlePointerMove('b')}
+            onPointerUp={handlePointerUp('b')}
+            role="slider"
+            aria-label="Loop end (B)"
+            aria-valuenow={loopEnd ?? 0}
+            aria-valuemin={0}
+            aria-valuemax={duration}
+            title={`B: ${formatYouTubeTime(loopEnd)} — drag to adjust`}
+          />
+        )}
+      </div>
+
+      {/* Time labels below track */}
+      {(aPct != null || bPct != null) && (
+        <div className="ab-timeline-label-row">
+          {aPct != null && (
+            <span
+              className="ab-timeline-label ab-timeline-label-a"
+              style={{ left: `${aPct}%` }}
+            >
+              A&nbsp;{formatYouTubeTime(loopStart)}
+            </span>
+          )}
+          {bPct != null && (
+            <span
+              className="ab-timeline-label ab-timeline-label-b"
+              style={{ left: `${bPct}%` }}
+            >
+              B&nbsp;{formatYouTubeTime(loopEnd)}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Nudge buttons */}
+      {(loopStart != null || loopEnd != null) && (
+        <div className="ab-timeline-nudge-row">
+          <button
+            type="button"
+            className="ab-timeline-nudge-btn"
+            onClick={() => handleNudge('a', -0.1)}
+            disabled={loopStart == null}
+          >
+            A −0.1s
+          </button>
+          <button
+            type="button"
+            className="ab-timeline-nudge-btn"
+            onClick={() => handleNudge('a', 0.1)}
+            disabled={loopStart == null}
+          >
+            A +0.1s
+          </button>
+          <div className="ab-timeline-nudge-sep" aria-hidden="true" />
+          <button
+            type="button"
+            className="ab-timeline-nudge-btn"
+            onClick={() => handleNudge('b', -0.1)}
+            disabled={loopEnd == null}
+          >
+            B −0.1s
+          </button>
+          <button
+            type="button"
+            className="ab-timeline-nudge-btn"
+            onClick={() => handleNudge('b', 0.1)}
+            disabled={loopEnd == null}
+          >
+            B +0.1s
+          </button>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function YouTubePracticePlayer({
@@ -86,6 +289,7 @@ function YouTubePracticePlayerInner({
     canLoop,
     clearLoop,
     currentTime,
+    duration,
     isLooping,
     jumpToLoopEnd,
     jumpToLoopStart,
@@ -94,7 +298,9 @@ function YouTubePracticePlayerInner({
     loopStart,
     playbackRate,
     playbackRateOptions,
+    setLoopEnd,
     setLoopEndFromCurrentTime,
+    setLoopStart,
     setLoopStartFromCurrentTime,
     syncPlayerMetadata,
     toggleLooping,
@@ -103,6 +309,7 @@ function YouTubePracticePlayerInner({
     player,
     playerState,
   })
+
 
   useEffect(() => {
     setActiveSavedLoopId(current => {
@@ -277,6 +484,15 @@ function YouTubePracticePlayerInner({
           aria-label={title}
         />
       </div>
+
+      <ABScrubTimeline
+        duration={duration}
+        loopStart={loopStart}
+        loopEnd={loopEnd}
+        player={player}
+        onChangeA={setLoopStart}
+        onChangeB={setLoopEnd}
+      />
 
       <div className="player-controls">
         {/* Row 1: A marker · B marker · Now · Speed */}

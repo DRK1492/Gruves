@@ -32,6 +32,15 @@ const getSafePlaybackRate = (player: YouTubePlayer | null) => {
   }
 }
 
+const getSafeDuration = (player: YouTubePlayer | null) => {
+  if (!player) return 0
+  try {
+    return player.getDuration() || 0
+  } catch {
+    return 0
+  }
+}
+
 const getSafePlaybackRates = (player: YouTubePlayer | null) => {
   if (!player) return DEFAULT_PLAYBACK_RATES
 
@@ -58,11 +67,24 @@ export function useYouTubeLoop({
     DEFAULT_PLAYBACK_RATES
   )
   const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
 
   // Keep a ref so that stable callbacks (useCallback with []) always see the latest player
   useEffect(() => {
     playerRef.current = player
   }, [player])
+
+  // Poll for duration until non-zero — getDuration() may return 0 shortly after onReady
+  useEffect(() => {
+    if (!player || duration > 0) return
+    const sync = () => {
+      const d = getSafeDuration(player)
+      if (d > 0) setDuration(d)
+    }
+    sync()
+    const intervalId = window.setInterval(sync, 500)
+    return () => window.clearInterval(intervalId)
+  }, [player, duration])
 
   const canLoop = loopStart != null && loopEnd != null && loopStart < loopEnd
   const isLooping = loopEnabled && canLoop
@@ -165,6 +187,7 @@ export function useYouTubeLoop({
     setAvailablePlaybackRates(getSafePlaybackRates(nextPlayer))
     setPlaybackRate(getSafePlaybackRate(nextPlayer))
     setCurrentTime(getSafeCurrentTime(nextPlayer))
+    setDuration(getSafeDuration(nextPlayer))
   }, [])
 
   const updatePlaybackRate = (rate: number) => {
@@ -188,6 +211,7 @@ export function useYouTubeLoop({
     canLoop,
     clearLoop,
     currentTime,
+    duration,
     isLooping,
     jumpToLoopEnd,
     jumpToLoopStart,
@@ -196,7 +220,9 @@ export function useYouTubeLoop({
     loopStart,
     playbackRate,
     playbackRateOptions,
+    setLoopEnd,
     setLoopEndFromCurrentTime,
+    setLoopStart,
     setLoopStartFromCurrentTime,
     syncPlayerMetadata,
     toggleLooping,

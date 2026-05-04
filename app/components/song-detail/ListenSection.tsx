@@ -206,7 +206,7 @@ export default function ListenSection({
               if (linkError) setLinkError('')
             }}
             onKeyDown={e => { if (e.key === 'Enter') handleAddLink() }}
-            className="input flex-1"
+            className="input flex-1 [[data-mode='light']_&]:bg-white [[data-mode='light']_&]:border-gray-300 [[data-mode='light']_&]:placeholder:text-gray-400"
           />
           <button
             onClick={handleAddLink}
@@ -224,7 +224,7 @@ export default function ListenSection({
             setLinkTitle(e.target.value)
             if (linkError) setLinkError('')
           }}
-          className="input w-full listen-title-input"
+          className="input w-full listen-title-input [[data-mode='light']_&]:bg-white [[data-mode='light']_&]:border-gray-300 [[data-mode='light']_&]:placeholder:text-gray-400"
         />
         {linkError && <p className="text-sm text-red-600 mt-1">{linkError}</p>}
       </div>
