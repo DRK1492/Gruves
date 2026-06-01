@@ -17,7 +17,7 @@ export interface Song {
   view_count?: number
 }
 
-export type SortPreference = 'default' | 'newest' | 'most_viewed'
+export type SortPreference = 'newest' | 'alphabetical' | 'most_viewed'
 
 export interface Genre {
   id: string

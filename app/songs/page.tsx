@@ -42,7 +42,7 @@ export default function SongsPage() {
   // Extra gate for the 500ms delay between popup 1 closing and popup 2 appearing
   const [demoPopupReady, setDemoPopupReady] = useState(false)
   const [showAddSongModal, setShowAddSongModal] = useState(false)
-  const [sortPreference, setSortPreference] = useState<SortPreference>('default')
+  const [sortPreference, setSortPreference] = useState<SortPreference>('newest')
   const deferredSearchTerm = useDeferredValue(searchTerm)
   const { session } = useSupabaseSession()
 
@@ -136,7 +136,7 @@ export default function SongsPage() {
   useEffect(() => {
     try {
       const saved = localStorage.getItem('gruves_sort_preference')
-      if (saved === 'newest' || saved === 'most_viewed') {
+      if (saved === 'newest' || saved === 'alphabetical' || saved === 'most_viewed') {
         setSortPreference(saved)
       }
     } catch {}
@@ -468,6 +468,11 @@ export default function SongsPage() {
         return [...arr].sort(
           (a, b) =>
             new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()
+        )
+      }
+      if (sortPreference === 'alphabetical') {
+        return [...arr].sort((a, b) =>
+          a.title.localeCompare(b.title, undefined, { sensitivity: 'base' })
         )
       }
       if (sortPreference === 'most_viewed') {

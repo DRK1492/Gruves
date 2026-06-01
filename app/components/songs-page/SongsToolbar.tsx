@@ -48,8 +48,8 @@ export default function SongsToolbar({
               onChange={e => setSortPreference(e.target.value as SortPreference)}
               className="bg-transparent border-none outline-none cursor-pointer text-[var(--text-muted)] hover:text-[var(--text)] transition-colors pr-1 appearance-none"
             >
-              <option value="default">Default</option>
               <option value="newest">Newly added</option>
+              <option value="alphabetical">Alphabetical</option>
               <option value="most_viewed">Most viewed</option>
             </select>
           </div>
