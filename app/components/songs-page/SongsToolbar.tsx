@@ -1,7 +1,7 @@
 'use client'
 
 import { ArrowUpDown } from 'lucide-react'
-import type { Genre, SortPreference, SongsViewMode } from './types'
+import type { Genre, SortPreference } from './types'
 
 type SongsToolbarProps = {
   artistOptions: string[]
@@ -16,9 +16,7 @@ type SongsToolbarProps = {
   setFilterGenreId: (value: string) => void
   setFilterStatus: (value: string) => void
   setSearchTerm: (value: string) => void
-  setSongsViewMode: (value: SongsViewMode) => void
   setSortPreference: (value: SortPreference) => void
-  songsViewMode: SongsViewMode
   sortPreference: SortPreference
 }
 
@@ -35,9 +33,7 @@ export default function SongsToolbar({
   setFilterGenreId,
   setFilterStatus,
   setSearchTerm,
-  setSongsViewMode,
   setSortPreference,
-  songsViewMode,
   sortPreference,
 }: SongsToolbarProps) {
   return (
@@ -56,22 +52,6 @@ export default function SongsToolbar({
               <option value="newest">Newly added</option>
               <option value="most_viewed">Most viewed</option>
             </select>
-          </div>
-          <div className="view-toggle">
-            <button
-              type="button"
-              className={songsViewMode === 'board' ? 'view-toggle-active' : "[[data-mode='light']_&]:!text-gray-600"}
-              onClick={() => setSongsViewMode('board')}
-            >
-              Board
-            </button>
-            <button
-              type="button"
-              className={songsViewMode === 'list' ? 'view-toggle-active' : "[[data-mode='light']_&]:!text-gray-600"}
-              onClick={() => setSongsViewMode('list')}
-            >
-              List
-            </button>
           </div>
           <button
             type="button"

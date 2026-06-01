@@ -916,42 +916,6 @@ a {
   background: rgba(17, 20, 26, 0.25);
 }
 
-.view-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.2rem;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface-strong);
-}
-
-.view-toggle button {
-  font-size: 0.7rem;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  color: var(--text-muted);
-  transition: background 140ms ease, color 140ms ease;
-}
-
-.view-toggle button:hover {
-  color: var(--text);
-}
-
-.view-toggle-active {
-  background: var(--accent);
-  color: #11151a;
-  font-weight: 600;
-}
-
-[data-mode="light"] .view-toggle button {
-  color: #374151;
-}
-
-[data-mode="light"] .view-toggle button.view-toggle-active {
-  color: #11151a;
-}
-
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -1348,64 +1312,6 @@ a {
   align-content: start;
 }
 
-.songs-list {
-  display: grid;
-  gap: 1rem;
-}
-
-.songs-list-section {
-  display: grid;
-  gap: 0.55rem;
-  margin-top: 0;
-  margin-bottom: 0;
-}
-
-/* Compound selector beats .label (0,2,0 > 0,1,0) — prevents specificity clash */
-.label.songs-list-label {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  width: 100%;
-  font-size: 0.85rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: none;
-  padding: 1rem 1rem;
-  margin-top: 1.5rem;
-  margin-bottom: 1rem;
-  border: 2px solid transparent;
-  border-radius: 4px;
-}
-
-.songs-list-section:first-child .label.songs-list-label {
-  margin-top: 0;
-}
-
-.label.songs-list-label.status-confident {
-  color: rgba(187, 247, 208, 0.9);
-  background: linear-gradient(to right, rgba(52, 211, 153, 0.04), rgba(52, 211, 153, 0.14) 50%, rgba(52, 211, 153, 0.04));
-  border-color: rgba(52, 211, 153, 0.28);
-}
-
-.label.songs-list-label.status-learning {
-  color: rgba(251, 191, 36, 0.95);
-  background: linear-gradient(to right, rgba(245, 185, 66, 0.04), rgba(245, 185, 66, 0.14) 50%, rgba(245, 185, 66, 0.04));
-  border-color: rgba(245, 185, 66, 0.28);
-}
-
-.label.songs-list-label.status-wishlist {
-  color: rgba(226, 232, 240, 0.95);
-  background: linear-gradient(to right, rgba(226, 232, 240, 0.02), rgba(226, 232, 240, 0.08) 50%, rgba(226, 232, 240, 0.02));
-  border-color: rgba(226, 232, 240, 0.18);
-}
-
-.songs-list-grid {
-  display: grid;
-  gap: 0.72rem;
-  grid-template-columns: repeat(3, minmax(280px, 1fr));
-}
-
 .song-tile {
   border: 1px solid var(--border);
   border-radius: 0.55rem;
@@ -1463,16 +1369,9 @@ a {
   .song-header-title {
     font-size: 1.65rem;
   }
-
-  .songs-list-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 1060px) and (min-width: 721px) {
-  .songs-list-grid {
-    grid-template-columns: repeat(2, minmax(280px, 1fr));
-  }
 }
 
 .songs-tile-menu {

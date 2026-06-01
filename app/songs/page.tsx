@@ -7,7 +7,7 @@ import AddSongModal from '../components/songs-page/AddSongModal'
 import OnboardingModal from '../components/songs-page/OnboardingModal'
 import SongsContent from '../components/songs-page/SongsContent'
 import SongsToolbar from '../components/songs-page/SongsToolbar'
-import type { Genre, Song, SongGenre, SortPreference, SongsViewMode } from '../components/songs-page/types'
+import type { Genre, Song, SongGenre, SortPreference } from '../components/songs-page/types'
 import UndoDeleteToast from '../components/songs-page/UndoDeleteToast'
 import { useSupabaseSession } from '../components/SessionProvider'
 import { seedDemoSong } from '../actions/seed'
@@ -42,10 +42,6 @@ export default function SongsPage() {
   // Extra gate for the 500ms delay between popup 1 closing and popup 2 appearing
   const [demoPopupReady, setDemoPopupReady] = useState(false)
   const [showAddSongModal, setShowAddSongModal] = useState(false)
-  const [songsViewMode, setSongsViewMode] = useState<SongsViewMode>(() => {
-    if (typeof window === 'undefined') return 'board'
-    return window.localStorage.getItem('songs-view-mode') === 'list' ? 'list' : 'board'
-  })
   const [sortPreference, setSortPreference] = useState<SortPreference>('default')
   const deferredSearchTerm = useDeferredValue(searchTerm)
   const { session } = useSupabaseSession()
@@ -136,11 +132,6 @@ export default function SongsPage() {
 
     return () => window.clearTimeout(timeoutId)
   }, [searchParams, pathname, router])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    window.localStorage.setItem('songs-view-mode', songsViewMode)
-  }, [songsViewMode])
 
   useEffect(() => {
     try {
@@ -543,9 +534,7 @@ export default function SongsPage() {
         setFilterGenreId={setFilterGenreId}
         setFilterStatus={setFilterStatus}
         setSearchTerm={setSearchTerm}
-        setSongsViewMode={setSongsViewMode}
         setSortPreference={setSortPreference}
-        songsViewMode={songsViewMode}
         sortPreference={sortPreference}
       />
 
@@ -561,7 +550,6 @@ export default function SongsPage() {
         openMenuSongId={openMenuSongId}
         setOpenMenuSongId={setOpenMenuSongId}
         songs={songs}
-        songsViewMode={songsViewMode}
         statusGroups={statusGroups}
         showDemoPopup={showDemoPopup}
         onDismissDemo={dismissDemoBanner}

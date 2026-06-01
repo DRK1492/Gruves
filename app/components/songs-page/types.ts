@@ -29,8 +29,6 @@ export interface Setlist {
   name: string
 }
 
-export type SongsViewMode = 'board' | 'list'
-
 export type SongStatusGroup = {
   key: 'confident' | 'learning' | 'wishlist'
   title: string
