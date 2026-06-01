@@ -136,8 +136,8 @@ export default function TermsPage() {
         <Section title="Contact">
           <p>
             Questions or concerns? Email us at{' '}
-            <a href="mailto:support@gruves.io" style={{ color: 'var(--accent)', textDecoration: 'none' }}>
-              support@gruves.io
+            <a href="mailto:gruvetheory@outlook.com" style={{ color: 'var(--accent)', textDecoration: 'none' }}>
+              gruvetheory@outlook.com
             </a>
             .
           </p>

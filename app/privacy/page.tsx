@@ -101,8 +101,8 @@ export default function PrivacyPage() {
           </p>
           <p style={{ marginBottom: '0.75rem' }}>
             If you need a copy of your data or have other requests, reach out to us at{' '}
-            <a href="mailto:support@gruves.io" style={{ color: 'var(--accent)', textDecoration: 'none' }}>
-              support@gruves.io
+            <a href="mailto:gruvetheory@outlook.com" style={{ color: 'var(--accent)', textDecoration: 'none' }}>
+              gruvetheory@outlook.com
             </a>
             .
           </p>
@@ -137,8 +137,8 @@ export default function PrivacyPage() {
         <Section title="Contact">
           <p>
             Questions or concerns? Email us at{' '}
-            <a href="mailto:support@gruves.io" style={{ color: 'var(--accent)', textDecoration: 'none' }}>
-              support@gruves.io
+            <a href="mailto:gruvetheory@outlook.com" style={{ color: 'var(--accent)', textDecoration: 'none' }}>
+              gruvetheory@outlook.com
             </a>
             .
           </p>
